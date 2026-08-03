@@ -18,7 +18,7 @@
 ```
 src/TiezhuToolbox/            主程序（WinForms）
 ├── Program.cs                入口
-├── MainForm.cs / .Designer.cs 主界面与装备强化逻辑；AntdUI 页签包含装备强化、自动强化、需求分析、软件设置。
+├── MainForm.cs / .Designer.cs 主界面与装备强化逻辑；AntdUI 页签包含装备强化、自动强化、星之铁匠铺、需求分析、软件设置。
 ├── MainForm.Tabs.cs          页签装配、设置持久化和页签间识别启停。
 ├── DemandBrowserControl.cs   只读套装需求浏览器，展示子类权重和英雄完整配装组合。
 ├── AppPaths.cs / AppSettings.cs 用户目录、原子写入和版本化软件设置（LocalAppData/TiezhuToolbox）。
@@ -33,6 +33,7 @@ src/TiezhuToolbox/            主程序（WinForms）
 │   ├── ImagePreprocessor.cs  裁剪、数字区域预处理、Mat→Bitmap
 │   ├── EquipmentScoreCalculator.cs 装备分数计算（民间算法，只统计副属性）
 │   └── EquipmentInfo.cs      识别结果模型
+├── Modules/StarForge/        星之铁匠铺四副属性 OCR、目标匹配和 ADB 自动变更闭环
 ├── Modules/Recommend/
 │   ├── DemandDatabase.cs     只读加载并校验内置 demand-profiles.json，不联网、不使用用户覆盖。
 │   ├── DemandDataModels.cs   套装、属性子类、英雄完整配装和八维权重模型。
@@ -67,7 +68,7 @@ dotnet run --project src/TiezhuToolbox                  # 运行主程序
 cd tools/OcrTest && dotnet run -- <截图路径...>          # OCR 回归（改识别逻辑后必跑）
 cd tools/OcrTest && dotnet run -- --demand-data          # 23套装/171子类/644配装/100英雄及隐私字段校验
 cd tools/OcrTest && dotnet run -- --synthetic            # 权重匹配、右三满值、固定主属性和强化建议自检
-cd tools/OcrTest && dotnet run -- --ui-smoke             # 四页签、需求浏览器、离开装备页暂停持续识别
+cd tools/OcrTest && dotnet run -- --ui-smoke             # 五页签、需求浏览器、离开装备页暂停持续识别
 cd tools/OcrTest && dotnet run -- --config-smoke         # 软件设置持久化/恢复默认
 dotnet publish src/TiezhuToolbox -c Release              # 单文件自包含发布
 ```

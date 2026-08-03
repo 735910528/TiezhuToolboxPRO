@@ -205,7 +205,7 @@ public partial class MainForm
 
     private async void btnAutoStart_Click(object? sender, EventArgs e)
     {
-        if (IsAutoEnhancing)
+        if (IsAutomationRunning)
             return;
 
         var deviceIndex = comboDevices.SelectedIndex;
@@ -236,6 +236,7 @@ public partial class MainForm
         _autoEnhanceCancellation = new CancellationTokenSource();
         var cancellationToken = _autoEnhanceCancellation.Token;
         _btnAutoStart.Enabled = false;
+        _btnStarForgeStart.Enabled = false;
         _btnAutoStop.Enabled = true;
         _numAutoMaxEquipment.Enabled = false;
         _comboAutoDisposalMethod.Enabled = false;
@@ -305,6 +306,7 @@ public partial class MainForm
             if (!IsDisposed)
             {
                 _btnAutoStart.Enabled = true;
+                _btnStarForgeStart.Enabled = true;
                 _btnAutoStop.Enabled = false;
                 _numAutoMaxEquipment.Enabled = true;
                 _comboAutoDisposalMethod.Enabled = true;

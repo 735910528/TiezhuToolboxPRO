@@ -1,7 +1,33 @@
 using TiezhuToolbox.Modules.Ocr;
 using TiezhuToolbox.Modules.Recommend;
 using TiezhuToolbox.Modules.Automation;
+using TiezhuToolbox.Modules.StarForge;
 using System.Windows.Forms;
+
+if (args.Contains("--star-forge"))
+{
+    var imagePath = args.SkipWhile(arg => arg != "--star-forge").Skip(1).FirstOrDefault()
+        ?? throw new ArgumentException("--star-forge 后必须提供星之铁匠铺截图路径");
+    using var bitmap = new Bitmap(imagePath);
+    using var ocr = new StarForgeOcrEngine();
+    var result = await ocr.RecognizeAsync(bitmap, CancellationToken.None);
+    Console.WriteLine(result.RawText);
+    foreach (var stat in result.Stats)
+        Console.WriteLine($"  {stat.StatName} {stat.DisplayValue}");
+    if (!result.IsReliable)
+        throw new InvalidOperationException(
+            $"星之铁匠铺识别不完整：screen={result.IsForgeScreen}, button={result.CanChange}, stats={result.Stats.Count}");
+    using var resized = new Bitmap(1920, 1080);
+    using (var graphics = Graphics.FromImage(resized))
+        graphics.DrawImage(bitmap, new Rectangle(0, 0, resized.Width, resized.Height));
+    var resizedResult = await ocr.RecognizeAsync(resized, CancellationToken.None);
+    if (!resizedResult.IsReliable
+        || !result.Stats.Select(stat => (stat.StatName, stat.Value))
+            .SequenceEqual(resizedResult.Stats.Select(stat => (stat.StatName, stat.Value))))
+        throw new InvalidOperationException("星之铁匠铺 OCR 未通过 1920×1080 分辨率缩放测试");
+    Console.WriteLine("星之铁匠铺 OCR 测试通过：原始截图与 1920×1080 缩放结果一致");
+    return;
+}
 
 if (args.Contains("--config-smoke"))
 {
@@ -56,6 +82,19 @@ if (args.Contains("--config-smoke"))
                         throw new InvalidOperationException("两项特殊强化规则没有默认开启");
                     speedSetRequiresSpeed.GetType().GetProperty("Checked")!.SetValue(speedSetRequiresSpeed, false);
                     criticalNecklaceMainStatRule.GetType().GetProperty("Checked")!.SetValue(criticalNecklaceMainStatRule, false);
+                    var starForgeMaximum = typeof(TiezhuToolbox.MainForm).GetField("_numStarForgeMaximumChanges",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(firstForm)!;
+                    starForgeMaximum.GetType().GetProperty("Value")!.SetValue(starForgeMaximum, 77M);
+                    var starForgeRows = (System.Collections.IList)typeof(TiezhuToolbox.MainForm)
+                        .GetField("_starForgeRows", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                        .GetValue(firstForm)!;
+                    var secondTarget = starForgeRows[1]!;
+                    secondTarget.GetType().GetProperty("Enabled")!.GetValue(secondTarget)!.GetType()
+                        .GetProperty("Checked")!.SetValue(secondTarget.GetType().GetProperty("Enabled")!.GetValue(secondTarget), true);
+                    secondTarget.GetType().GetProperty("Stat")!.GetValue(secondTarget)!.GetType()
+                        .GetProperty("SelectedValue")!.SetValue(secondTarget.GetType().GetProperty("Stat")!.GetValue(secondTarget), "生命值");
+                    secondTarget.GetType().GetProperty("Minimum")!.GetValue(secondTarget)!.GetType()
+                        .GetProperty("Value")!.SetValue(secondTarget.GetType().GetProperty("Minimum")!.GetValue(secondTarget), 250M);
                     typeof(TiezhuToolbox.MainForm).GetMethod("SetDemandProfileEnabled",
                             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                         .Invoke(firstForm, new object[] { persistedProfileKey, false });
@@ -99,10 +138,26 @@ if (args.Contains("--config-smoke"))
                     .GetField("_disabledDemandProfiles",
                         System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                     .GetValue(secondForm)!;
+                var loadedStarForgeMaximum = typeof(TiezhuToolbox.MainForm).GetField("_numStarForgeMaximumChanges",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(secondForm)!;
+                var starForgeMaximumValue = (decimal)loadedStarForgeMaximum.GetType().GetProperty("Value")!
+                    .GetValue(loadedStarForgeMaximum)!;
+                var loadedStarForgeRows = (System.Collections.IList)typeof(TiezhuToolbox.MainForm)
+                    .GetField("_starForgeRows", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                    .GetValue(secondForm)!;
+                var loadedSecondTarget = loadedStarForgeRows[1]!;
+                var loadedSecondEnabledControl = loadedSecondTarget.GetType().GetProperty("Enabled")!.GetValue(loadedSecondTarget)!;
+                var loadedSecondStatControl = loadedSecondTarget.GetType().GetProperty("Stat")!.GetValue(loadedSecondTarget)!;
+                var loadedSecondMinimumControl = loadedSecondTarget.GetType().GetProperty("Minimum")!.GetValue(loadedSecondTarget)!;
+                var loadedSecondEnabled = (bool)loadedSecondEnabledControl.GetType().GetProperty("Checked")!.GetValue(loadedSecondEnabledControl)!;
+                var loadedSecondStat = loadedSecondStatControl.GetType().GetProperty("SelectedValue")!.GetValue(loadedSecondStatControl) as string;
+                var loadedSecondMinimum = (decimal)loadedSecondMinimumControl.GetType().GetProperty("Value")!.GetValue(loadedSecondMinimumControl)!;
                 if (value != 31M || level88Value != 33M || maxAutoValue != 17M
                     || disposalValue != "分解" || matchValue != 82M || stopOnValuableValue
                     || !heroicOnlyGambleSpeedValue
                     || speedSetRequiresSpeedValue || criticalNecklaceMainStatRuleValue
+                    || starForgeMaximumValue != 77M || !loadedSecondEnabled
+                    || loadedSecondStat != "生命值" || loadedSecondMinimum != 250M
                     || !loadedDisabledProfiles.Contains(persistedProfileKey)
                     || loadedAddress.Text != "127.0.0.1:5555")
                     throw new InvalidOperationException("软件设置重载结果不一致");
@@ -252,7 +307,7 @@ if (args.Contains("--ui-smoke"))
                 ?? throw new InvalidOperationException("未找到主页签");
             var tabs = tabsField.GetValue(form) ?? throw new InvalidOperationException("主页签未初始化");
             var pages = tabs.GetType().GetProperty("Pages")?.GetValue(tabs) as System.Collections.ICollection;
-            if (pages?.Count != 4)
+            if (pages?.Count != 5)
                 throw new InvalidOperationException($"页签数量错误：{pages?.Count}");
 
             var selectedIndex = tabs.GetType().GetProperty("SelectedIndex")!;
@@ -353,6 +408,21 @@ if (args.Contains("--ui-smoke"))
 
             selectedIndex.SetValue(tabs, 2);
             Application.DoEvents();
+            CaptureTab("star-forge");
+            var starForgeStart = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnStarForgeStart",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            var starForgeLog = (RichTextBox)typeof(TiezhuToolbox.MainForm).GetField("_starForgeLog",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            var starForgeMaximum = typeof(TiezhuToolbox.MainForm).GetField("_numStarForgeMaximumChanges",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            var starForgeMaximumValue = (decimal)starForgeMaximum.GetType().GetProperty("Value")!.GetValue(starForgeMaximum)!;
+            if (!starForgeStart.Enabled || !starForgeLog.ReadOnly || starForgeMaximumValue != 100M || timer.Enabled)
+                throw new InvalidOperationException("星之铁匠铺页初始状态不正确");
+            if (starForgeLog.Right < starForgeLog.Parent!.ClientSize.Width - starForgeLog.Parent.Padding.Right - 2)
+                throw new InvalidOperationException("星之铁匠铺日志未填满内容区");
+
+            selectedIndex.SetValue(tabs, 3);
+            Application.DoEvents();
             CaptureTab("demand-analysis");
             var demandBrowser = typeof(TiezhuToolbox.MainForm).GetField("_demandBrowserControl",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
@@ -407,7 +477,7 @@ if (args.Contains("--ui-smoke"))
                 throw new InvalidOperationException("需求子类开关没有更新匹配过滤配置");
             if (timer.Enabled)
                 throw new InvalidOperationException("离开装备页后持续识别仍在运行");
-            selectedIndex.SetValue(tabs, 3);
+            selectedIndex.SetValue(tabs, 4);
             Application.DoEvents();
             var settingInputs = new[] { "numLeftThreshold", "numRightThreshold", "numLevel88Threshold", "comboRecognitionHotKey", "numRecognitionInterval" }
                 .Select(name => (Control)typeof(TiezhuToolbox.MainForm).GetField(name,
@@ -491,7 +561,7 @@ if (args.Contains("--ui-smoke"))
         throw new TimeoutException("界面冒烟测试超时");
     if (uiError != null)
         throw new InvalidOperationException("界面冒烟测试失败", uiError);
-    Console.WriteLine("界面冒烟测试通过：4 个页签，23 个套装需求");
+    Console.WriteLine("界面冒烟测试通过：5 个页签，23 个套装需求");
     return;
 }
 
@@ -954,7 +1024,46 @@ if (args.Contains("--synthetic"))
     if (inferred != 6)
         throw new InvalidOperationException($"强化等级推导失败：期望6，实际{inferred}");
 
-    Console.WriteLine("套装子类匹配、主属性量化与强化建议合成测试通过");
+    var forgeLines = new[]
+    {
+        ("速度5", "速度", 5D, false),
+        ("暴击率5%", "暴击率", 5D, true),
+        ("暴击伤害7％", "暴击伤害", 7D, true),
+        ("生命值200", "生命值", 200D, false),
+        ("防御力30", "防御力", 30D, false),
+        ("攻击力40", "攻击力", 40D, false),
+        ("效果抗性8%", "效果抗性", 8D, true),
+        ("生命值8%", "生命值%", 8D, true),
+    };
+    foreach (var (text, name, value, percent) in forgeLines)
+    {
+        if (!StarForgeRules.TryParseStatLine(text, out var stat)
+            || stat.StatName != name || stat.Value != value || stat.IsPercent != percent)
+            throw new InvalidOperationException($"星之铁匠铺属性解析失败：{text}");
+    }
+    var forgeStats = new[]
+    {
+        new StarForgeStat("速度", 5, false),
+        new StarForgeStat("暴击率", 5, true),
+        new StarForgeStat("生命值%", 8, true),
+        new StarForgeStat("防御力", 30, false),
+    };
+    if (!StarForgeRules.Match(forgeStats,
+        [new StarForgeTarget("速度", 5), new StarForgeTarget("生命值%", 8)]).IsMatch)
+        throw new InvalidOperationException("星之铁匠铺没有在全部目标达标时停止");
+    if (StarForgeRules.Match(forgeStats,
+        [new StarForgeTarget("速度", 6), new StarForgeTarget("生命值%", 8)]).IsMatch)
+        throw new InvalidOperationException("星之铁匠铺在目标未全部达标时错误停止");
+    if (StarForgeRules.GetDefaultMinimum("速度") != 5
+        || StarForgeRules.GetDefaultMinimum("暴击率") != 5
+        || StarForgeRules.GetDefaultMinimum("暴击伤害") != 7
+        || StarForgeRules.GetDefaultMinimum("效果命中") != 8
+        || StarForgeRules.GetDefaultMinimum("生命值") != 200
+        || StarForgeRules.GetDefaultMinimum("防御力") != 30
+        || StarForgeRules.GetDefaultMinimum("攻击力") != 40)
+        throw new InvalidOperationException("星之铁匠铺默认属性阈值错误");
+
+    Console.WriteLine("套装子类匹配、主属性量化、强化建议与星之铁匠铺规则合成测试通过");
     return;
 }
 

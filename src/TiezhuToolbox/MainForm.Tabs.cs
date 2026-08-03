@@ -39,6 +39,7 @@ public partial class MainForm
         };
         _equipmentTab = new AntdUI.TabPage { Text = "装备强化", BackColor = Color.White };
         _autoEnhanceTab = new AntdUI.TabPage { Text = "自动强化", BackColor = Color.FromArgb(245, 246, 248) };
+        _starForgeTab = new AntdUI.TabPage { Text = "星之铁匠铺", BackColor = Color.FromArgb(245, 246, 248) };
         var demandTab = new AntdUI.TabPage { Text = "需求分析", BackColor = Color.White };
         var settingsTab = new AntdUI.TabPage { Text = "软件设置", BackColor = Color.FromArgb(245, 246, 248) };
 
@@ -64,12 +65,17 @@ public partial class MainForm
         _autoEnhanceTab.Controls.Add(autoEnhanceContent);
         ScaleRuntimePage(autoEnhanceContent);
 
+        var starForgeContent = CreateStarForgeContent();
+        _starForgeTab.Controls.Add(starForgeContent);
+        ScaleRuntimePage(starForgeContent);
+
         var settingsContent = CreateSettingsContent();
         settingsTab.Controls.Add(settingsContent);
         ScaleRuntimePage(settingsContent);
 
         _mainTabs.Pages.Add(_equipmentTab);
         _mainTabs.Pages.Add(_autoEnhanceTab);
+        _mainTabs.Pages.Add(_starForgeTab);
         _mainTabs.Pages.Add(demandTab);
         _mainTabs.Pages.Add(settingsTab);
         _mainTabs.SelectedIndex = 0;
@@ -390,6 +396,16 @@ public partial class MainForm
             _chkHeroicOnlyGambleSpeed.Checked = _settings.HeroicOnlyGambleSpeed;
             _chkSpeedSetRequiresSpeed.Checked = _settings.SpeedSetRequiresSpeed;
             _chkCriticalNecklaceMainStatRule.Checked = _settings.CriticalNecklaceMainStatRule;
+            _numStarForgeMaximumChanges.Value = _settings.StarForgeMaximumChanges;
+            for (var i = 0; i < _starForgeRows.Count; i++)
+            {
+                var setting = _settings.StarForgeTargets[i];
+                var row = _starForgeRows[i];
+                row.Enabled.Checked = setting.Enabled;
+                row.Stat.SelectedValue = setting.StatName;
+                row.Minimum.Value = (decimal)setting.MinimumValue;
+                UpdateStarForgeRowUnit(row, setting.StatName);
+            }
         }
         finally
         {
@@ -417,6 +433,13 @@ public partial class MainForm
         _settings.HeroicOnlyGambleSpeed = _chkHeroicOnlyGambleSpeed.Checked;
         _settings.SpeedSetRequiresSpeed = _chkSpeedSetRequiresSpeed.Checked;
         _settings.CriticalNecklaceMainStatRule = _chkCriticalNecklaceMainStatRule.Checked;
+        _settings.StarForgeMaximumChanges = (int)_numStarForgeMaximumChanges.Value;
+        _settings.StarForgeTargets = _starForgeRows.Select(row => new StarForgeTargetSetting
+        {
+            Enabled = row.Enabled.Checked,
+            StatName = GetSelectedStarForgeStat(row),
+            MinimumValue = (double)row.Minimum.Value,
+        }).ToList();
         _settings.DisabledDemandProfiles = _disabledDemandProfiles
             .OrderBy(key => key, StringComparer.Ordinal)
             .ToList();
@@ -453,6 +476,8 @@ public partial class MainForm
         _settings.HeroicOnlyGambleSpeed = defaults.HeroicOnlyGambleSpeed;
         _settings.SpeedSetRequiresSpeed = defaults.SpeedSetRequiresSpeed;
         _settings.CriticalNecklaceMainStatRule = defaults.CriticalNecklaceMainStatRule;
+        _settings.StarForgeMaximumChanges = defaults.StarForgeMaximumChanges;
+        _settings.StarForgeTargets = defaults.StarForgeTargets;
         _disabledDemandProfiles.Clear();
         _settings.DisabledDemandProfiles.Clear();
         LoadSettingsIntoControls();
@@ -491,9 +516,9 @@ public partial class MainForm
     private void ApplyRecognitionAvailability(bool showHotKeySuccess)
     {
         continuousRecognitionTimer.Enabled = IsEquipmentTabActive
-                                             && !IsAutoEnhancing
+                                             && !IsAutomationRunning
                                              && chkContinuousRecognition.Checked;
-        if (!IsEquipmentTabActive || IsAutoEnhancing)
+        if (!IsEquipmentTabActive || IsAutomationRunning)
         {
             if (_registeredRecognitionHotKey != Keys.None)
             {
@@ -508,6 +533,7 @@ public partial class MainForm
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
         _autoEnhanceCancellation?.Cancel();
+        _starForgeCancellation?.Cancel();
         base.OnFormClosing(e);
     }
 }
