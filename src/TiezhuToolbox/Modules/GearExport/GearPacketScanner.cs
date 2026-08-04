@@ -80,7 +80,7 @@ public sealed class GearPacketScanner : IDisposable
 
         var python = FindPythonCommand()
             ?? throw new InvalidOperationException(
-                "未找到 Python。请安装 Python 3 并勾选加入 PATH，然后执行：pip install scapy");
+                "未找到 Python。请安装 Python 3，并勾选「Add Python to PATH」。抓包还需安装 Npcap；Scapy 已随程序附带。");
 
         var script = ResolveScannerScriptPath();
         lock (_sync)

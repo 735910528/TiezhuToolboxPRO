@@ -1,9 +1,15 @@
 # Packet capture helper for Epic Seven gear export.
-# Requires: Python 3.x, Npcap, and `pip install scapy`
-from scapy.all import *
+# Requires: Python 3.x + Npcap. Scapy is bundled under ./vendor.
 import os
 import sys
 import threading
+
+_here = os.path.dirname(os.path.abspath(__file__))
+_vendor = os.path.join(_here, "vendor")
+if os.path.isdir(_vendor):
+    sys.path.insert(0, _vendor)
+
+from scapy.all import *  # noqa: E402
 
 acks = {}
 loads = {}

@@ -48,7 +48,7 @@ public partial class MainForm
         };
         var hint = new Label
         {
-            Text = "流程：安装 Python3 + Npcap，并 pip install scapy → 模拟器保持开启并先关闭游戏 → 开始扫描 → 打开游戏进大厅 → 停止并解包 → 导出 gear.txt。",
+            Text = "流程：安装 Python3 + Npcap → 模拟器保持开启并先关闭游戏 → 开始扫描 → 打开游戏进大厅 → 停止并解包 → 导出 gear.txt。",
             ForeColor = Color.FromArgb(95, 99, 104),
             Location = new Point(24, 90),
             Size = new Size(900, 40),
@@ -112,7 +112,7 @@ public partial class MainForm
             DetectUrls = false,
         };
         AppendGearExportStatus(
-            "准备就绪。本功能不依赖顶部 ADB/窗口连接，但需要本机 Python、Npcap 与 scapy。");
+            "准备就绪。本功能不依赖顶部 ADB/窗口连接；需本机 Python 与 Npcap（Scapy 已随程序附带）。");
 
         card.Resize += (_, _) =>
         {
