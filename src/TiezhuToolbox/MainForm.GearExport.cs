@@ -20,6 +20,7 @@ public partial class MainForm
     private GearTxtDocument? _gearExportDocument;
     private BailiGearStatResult? _bailiLastResult;
     private bool _gearExportBusy;
+    private bool _gearExportSetupPrompted;
 
     private Control CreateGearExportContent()
     {
@@ -27,104 +28,57 @@ public partial class MainForm
         {
             Dock = DockStyle.Fill,
             BackColor = Color.FromArgb(245, 246, 248),
-            Padding = new Padding(24),
+            Padding = new Padding(16),
         };
         var card = new Panel
         {
             Dock = DockStyle.Fill,
             BackColor = Color.White,
-            Padding = new Padding(22),
+            Padding = new Padding(16),
+        };
+
+        var topBar = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = ScalePixel(96),
+            BackColor = Color.White,
         };
 
         var title = new Label
         {
             Text = "战力分析",
-            Font = new Font("Microsoft YaHei UI", 17F, FontStyle.Bold),
+            Font = new Font("Microsoft YaHei UI", 16F, FontStyle.Bold),
             ForeColor = TextDarkColor,
-            Location = new Point(22, 16),
+            Location = new Point(8, 8),
             AutoSize = true,
         };
-        var warning = new Label
-        {
-            Text = "注意：解包依赖 Fribbels 第三方云接口；战力分析依赖百里 e7bot.top。对方变更或关闭后对应功能会失效。",
-            ForeColor = AdviceGiveUpColor,
-            Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold),
-            Location = new Point(24, 58),
-            Size = new Size(900, 28),
-            AutoEllipsis = true,
-        };
-        var hint = new Label
-        {
-            Text = "流程：安装 Python3 + Npcap → 关闭游戏后开始扫描 → 进大厅 → 停止并解包 → 自动上传百里并在本页显示战力图。",
-            ForeColor = Color.FromArgb(95, 99, 104),
-            Location = new Point(24, 90),
-            Size = new Size(900, 28),
-        };
-        var pathTip = new Label
-        {
-            Text = "Python 安装提示：务必勾选 “Add python.exe to PATH”（将 Python 添加到环境变量），装完后建议重启本程序再扫描。",
-            ForeColor = AccentColor,
-            Font = new Font("Microsoft YaHei UI", 9.25F, FontStyle.Bold),
-            Location = new Point(24, 120),
-            Size = new Size(900, 28),
-            AutoEllipsis = true,
-        };
-
-        var btnOpenPythonDownload = new AntdUI.Button
-        {
-            Text = "下载 Python",
-            Location = new Point(24, 156),
-            Size = new Size(120, 34),
-            Radius = 6,
-            BorderWidth = 1,
-            DefaultBack = Color.White,
-            DefaultBorderColor = Color.FromArgb(218, 220, 224),
-        };
-        btnOpenPythonDownload.Click += (_, _) => OpenGearExportDownloadUrl(
-            "https://www.python.org/downloads/windows/",
-            "Python");
-
-        var btnOpenNpcapDownload = new AntdUI.Button
-        {
-            Text = "下载 Npcap",
-            Location = new Point(156, 156),
-            Size = new Size(120, 34),
-            Radius = 6,
-            BorderWidth = 1,
-            DefaultBack = Color.White,
-            DefaultBorderColor = Color.FromArgb(218, 220, 224),
-        };
-        btnOpenNpcapDownload.Click += (_, _) => OpenGearExportDownloadUrl(
-            "https://npcap.com/#download",
-            "Npcap");
-
-        var btnOpenBailiSite = new AntdUI.Button
-        {
-            Text = "打开百里官网",
-            Location = new Point(288, 156),
-            Size = new Size(132, 34),
-            Radius = 6,
-            BorderWidth = 1,
-            DefaultBack = Color.White,
-            DefaultBorderColor = Color.FromArgb(218, 220, 224),
-        };
-        btnOpenBailiSite.Click += (_, _) => OpenGearExportDownloadUrl(
-            BailiGearStatClient.SiteUrl,
-            "百里战力分析");
 
         _lblGearExportState = new Label
         {
             Text = "状态：未开始",
             ForeColor = TextDarkColor,
-            Location = new Point(24, 200),
-            Size = new Size(720, 32),
+            Location = new Point(140, 14),
+            Size = new Size(420, 24),
             TextAlign = ContentAlignment.MiddleLeft,
         };
+
+        var btnHelp = new AntdUI.Button
+        {
+            Text = "使用说明",
+            Location = new Point(570, 8),
+            Size = new Size(100, 32),
+            Radius = 6,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+        };
+        btnHelp.Click += (_, _) => ShowGearExportSetupDialog(force: true);
 
         _btnGearScanStart = new AntdUI.Button
         {
             Text = "开始扫描",
-            Location = new Point(24, 240),
+            Location = new Point(8, 48),
             Size = new Size(120, 36),
             Radius = 6,
             Type = AntdUI.TTypeMini.Primary,
@@ -134,7 +88,7 @@ public partial class MainForm
         _btnGearScanStop = new AntdUI.Button
         {
             Text = "停止并解包",
-            Location = new Point(156, 240),
+            Location = new Point(140, 48),
             Size = new Size(120, 36),
             Radius = 6,
             Enabled = false,
@@ -147,7 +101,7 @@ public partial class MainForm
         _btnGearExportFile = new AntdUI.Button
         {
             Text = "导出 gear.txt",
-            Location = new Point(288, 240),
+            Location = new Point(272, 48),
             Size = new Size(132, 36),
             Radius = 6,
             Enabled = false,
@@ -160,7 +114,7 @@ public partial class MainForm
         _btnBailiAnalyzeFile = new AntdUI.Button
         {
             Text = "选文件分析",
-            Location = new Point(432, 240),
+            Location = new Point(416, 48),
             Size = new Size(120, 36),
             Radius = 6,
             BorderWidth = 1,
@@ -169,26 +123,41 @@ public partial class MainForm
         };
         _btnBailiAnalyzeFile.Click += async (_, _) => await AnalyzeWithBailiFromFileAsync();
 
+        topBar.Controls.AddRange(new Control[]
+        {
+            title, _lblGearExportState, btnHelp,
+            _btnGearScanStart, _btnGearScanStop, _btnGearExportFile, _btnBailiAnalyzeFile,
+        });
+        topBar.Resize += (_, _) =>
+        {
+            btnHelp.Left = Math.Max(ScalePixel(480), topBar.ClientSize.Width - btnHelp.Width - ScalePixel(8));
+            _lblGearExportState.Width = Math.Max(
+                ScalePixel(160),
+                btnHelp.Left - _lblGearExportState.Left - ScalePixel(12));
+        };
+
         _txtGearExportStatus = new RichTextBox
         {
-            Location = new Point(24, 292),
-            Size = new Size(360, 360),
-            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left,
+            Dock = DockStyle.Bottom,
+            Height = ScalePixel(110),
             ReadOnly = true,
             BackColor = Color.FromArgb(248, 249, 250),
             ForeColor = TextDarkColor,
             BorderStyle = BorderStyle.FixedSingle,
-            Font = new Font("Microsoft YaHei UI", 9.5F),
+            Font = new Font("Microsoft YaHei UI", 9.25F),
             DetectUrls = false,
         };
-        AppendGearExportStatus(
-            "准备就绪。停止并解包成功后，会自动上传百里并在右侧显示战力分析图。");
 
+        var resultArea = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(0, 8, 0, 8),
+            BackColor = Color.White,
+        };
         var resultHeader = new Panel
         {
-            Location = new Point(400, 292),
-            Size = new Size(520, 40),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Dock = DockStyle.Top,
+            Height = ScalePixel(40),
             BackColor = Color.FromArgb(248, 249, 250),
         };
         _lblBailiFileId = new Label
@@ -228,59 +197,184 @@ public partial class MainForm
 
         _picBailiResult = new PictureBox
         {
-            Location = new Point(400, 338),
-            Size = new Size(520, 314),
-            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            Dock = DockStyle.Fill,
             SizeMode = PictureBoxSizeMode.Zoom,
             BackColor = Color.FromArgb(32, 33, 36),
             BorderStyle = BorderStyle.FixedSingle,
         };
 
-        card.Resize += (_, _) => LayoutGearExportContent(card, warning, hint, pathTip, resultHeader);
+        resultArea.Controls.Add(_picBailiResult);
+        resultArea.Controls.Add(resultHeader);
 
-        card.Controls.AddRange(new Control[]
-        {
-            title, warning, hint, pathTip,
-            btnOpenPythonDownload, btnOpenNpcapDownload, btnOpenBailiSite,
-            _lblGearExportState,
-            _btnGearScanStart, _btnGearScanStop, _btnGearExportFile,
-            _btnBailiAnalyzeFile,
-            _txtGearExportStatus, resultHeader, _picBailiResult,
-        });
+        // Dock order: Fill first in collection, then Bottom/Top (WinForms applies reverse).
+        card.Controls.Add(resultArea);
+        card.Controls.Add(_txtGearExportStatus);
+        card.Controls.Add(topBar);
         host.Controls.Add(card);
+
+        AppendGearExportStatus("准备就绪。停止并解包成功后，会自动上传百里并在上方显示战力分析图。");
+        host.HandleCreated += (_, _) =>
+        {
+            BeginInvoke(() => ShowGearExportSetupDialog(force: false));
+        };
+
         return host;
     }
 
-    private void LayoutGearExportContent(
-        Panel card,
-        Label warning,
-        Label hint,
-        Label pathTip,
-        Panel resultHeader)
+    private static bool IsNpcapInstalled()
     {
-        var contentWidth = Math.Max(ScalePixel(300), card.ClientSize.Width - ScalePixel(48));
-        warning.Width = contentWidth;
-        hint.Width = contentWidth;
-        pathTip.Width = contentWidth;
-        _lblGearExportState.Width = contentWidth;
+        var candidates = new[]
+        {
+            Path.Combine(Environment.SystemDirectory, "Npcap", "wpcap.dll"),
+            Path.Combine(Environment.SystemDirectory, "wpcap.dll"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Npcap", "wpcap.dll"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Npcap", "wpcap.dll"),
+        };
+        return candidates.Any(File.Exists);
+    }
 
-        var gap = ScalePixel(16);
-        var leftWidth = Math.Max(ScalePixel(260), contentWidth * 38 / 100);
-        var rightWidth = Math.Max(ScalePixel(220), contentWidth - leftWidth - gap);
-        var bottomHeight = Math.Max(
-            ScalePixel(180),
-            card.ClientSize.Height - _txtGearExportStatus.Top - ScalePixel(24));
+    private (bool pythonOk, bool npcapOk, string summary) GetGearExportEnvironmentStatus()
+    {
+        var pythonOk = GearPacketScanner.FindPythonCommand() != null;
+        var npcapOk = IsNpcapInstalled();
+        var parts = new List<string>();
+        if (!pythonOk)
+            parts.Add("未检测到 Python（请安装并勾选 Add to PATH）");
+        if (!npcapOk)
+            parts.Add("未检测到 Npcap");
+        var summary = parts.Count == 0
+            ? "Python 与 Npcap 已就绪。"
+            : string.Join("；", parts) + "。";
+        return (pythonOk, npcapOk, summary);
+    }
 
-        _txtGearExportStatus.Width = leftWidth;
-        _txtGearExportStatus.Height = bottomHeight;
+    private void ShowGearExportSetupDialog(bool force)
+    {
+        var (pythonOk, npcapOk, summary) = GetGearExportEnvironmentStatus();
+        if (!force && pythonOk && npcapOk)
+            return;
+        if (!force && _gearExportSetupPrompted)
+            return;
+        _gearExportSetupPrompted = true;
 
-        resultHeader.Location = new Point(_txtGearExportStatus.Left + leftWidth + gap, _txtGearExportStatus.Top);
-        resultHeader.Width = rightWidth;
-        resultHeader.Height = ScalePixel(40);
+        var form = new Form
+        {
+            Text = "战力分析 · 使用说明",
+            StartPosition = FormStartPosition.CenterParent,
+            Size = new Size(620, 420),
+            MinimumSize = new Size(520, 360),
+            ShowInTaskbar = false,
+            MinimizeBox = false,
+            MaximizeBox = false,
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            Owner = this,
+        };
+        if (Icon != null)
+            form.Icon = Icon;
 
-        _picBailiResult.Location = new Point(resultHeader.Left, resultHeader.Bottom + ScalePixel(6));
-        _picBailiResult.Width = rightWidth;
-        _picBailiResult.Height = Math.Max(ScalePixel(120), bottomHeight - resultHeader.Height - ScalePixel(6));
+        var body = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(20),
+            BackColor = Color.White,
+        };
+
+        var envLabel = new Label
+        {
+            Text = "环境检测：" + summary,
+            ForeColor = pythonOk && npcapOk ? AccentColor : AdviceGiveUpColor,
+            Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold),
+            Location = new Point(4, 4),
+            Size = new Size(560, 28),
+            AutoEllipsis = true,
+        };
+        var warning = new Label
+        {
+            Text = "注意：解包依赖 Fribbels 第三方云接口；战力分析依赖百里 e7bot.top。对方变更或关闭后对应功能会失效。",
+            ForeColor = AdviceGiveUpColor,
+            Font = new Font("Microsoft YaHei UI", 9.5F),
+            Location = new Point(4, 40),
+            Size = new Size(560, 42),
+        };
+        var hint = new Label
+        {
+            Text = "流程：安装 Python3 + Npcap → 关闭游戏后开始扫描 → 进大厅 → 停止并解包 → 自动上传百里并在本页显示战力图。",
+            ForeColor = Color.FromArgb(95, 99, 104),
+            Location = new Point(4, 90),
+            Size = new Size(560, 42),
+        };
+        var pathTip = new Label
+        {
+            Text = "Python 安装时务必勾选 “Add python.exe to PATH”，装完后建议重启本程序再扫描。",
+            ForeColor = AccentColor,
+            Font = new Font("Microsoft YaHei UI", 9.25F, FontStyle.Bold),
+            Location = new Point(4, 140),
+            Size = new Size(560, 42),
+        };
+
+        var btnPython = new AntdUI.Button
+        {
+            Text = "下载 Python",
+            Location = new Point(4, 200),
+            Size = new Size(120, 34),
+            Radius = 6,
+            Type = pythonOk ? AntdUI.TTypeMini.Default : AntdUI.TTypeMini.Primary,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+        };
+        btnPython.Click += (_, _) => OpenGearExportDownloadUrl(
+            "https://www.python.org/downloads/windows/",
+            "Python");
+
+        var btnNpcap = new AntdUI.Button
+        {
+            Text = "下载 Npcap",
+            Location = new Point(136, 200),
+            Size = new Size(120, 34),
+            Radius = 6,
+            Type = npcapOk ? AntdUI.TTypeMini.Default : AntdUI.TTypeMini.Primary,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+        };
+        btnNpcap.Click += (_, _) => OpenGearExportDownloadUrl(
+            "https://npcap.com/#download",
+            "Npcap");
+
+        var btnBaili = new AntdUI.Button
+        {
+            Text = "打开百里官网",
+            Location = new Point(268, 200),
+            Size = new Size(132, 34),
+            Radius = 6,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+        };
+        btnBaili.Click += (_, _) => OpenGearExportDownloadUrl(
+            BailiGearStatClient.SiteUrl,
+            "百里战力分析");
+
+        var btnClose = new AntdUI.Button
+        {
+            Text = "知道了",
+            Location = new Point(440, 268),
+            Size = new Size(120, 36),
+            Radius = 6,
+            Type = AntdUI.TTypeMini.Primary,
+        };
+        btnClose.Click += (_, _) => form.Close();
+
+        body.Controls.AddRange(new Control[]
+        {
+            envLabel, warning, hint, pathTip,
+            btnPython, btnNpcap, btnBaili, btnClose,
+        });
+        form.Controls.Add(body);
+        form.AcceptButton = null;
+        form.CancelButton = null;
+        form.ShowDialog(this);
     }
 
     private void OpenGearExportDownloadUrl(string url, string name)
@@ -304,7 +398,7 @@ public partial class MainForm
 
     private void AppendGearExportStatus(string message)
     {
-        if (_txtGearExportStatus.IsDisposed)
+        if (_txtGearExportStatus == null || _txtGearExportStatus.IsDisposed)
             return;
         var line = $"[{DateTime.Now:HH:mm:ss}] {message}";
         if (_txtGearExportStatus.TextLength == 0)
@@ -344,7 +438,6 @@ public partial class MainForm
         try
         {
             using var ms = new MemoryStream(result.ImageBytes, writable: false);
-            // Clone so the stream can be disposed safely.
             using var temp = Image.FromStream(ms);
             image = new Bitmap(temp);
         }
@@ -411,6 +504,14 @@ public partial class MainForm
         if (_gearExportBusy || (_gearScanner?.IsRunning ?? false))
             return;
 
+        var (pythonOk, npcapOk, _) = GetGearExportEnvironmentStatus();
+        if (!pythonOk || !npcapOk)
+        {
+            ShowGearExportSetupDialog(force: true);
+            AppendGearExportStatus("环境未就绪，请先安装缺失依赖后再开始扫描。");
+            return;
+        }
+
         try
         {
             _gearExportDocument = null;
@@ -429,6 +530,7 @@ public partial class MainForm
             SetGearExportUiState("启动失败", scanning: false, canExport: false);
             AppendGearExportStatus("启动失败：" + ex.Message);
             UpdateStatus("战力分析启动失败：" + ex.Message);
+            ShowGearExportSetupDialog(force: true);
         }
 
         await Task.CompletedTask;
