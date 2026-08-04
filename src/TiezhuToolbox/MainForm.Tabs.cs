@@ -41,7 +41,7 @@ public partial class MainForm
         };
         _equipmentTab = new AntdUI.TabPage { Text = "装备强化", BackColor = Color.White };
         _autoEnhanceTab = new AntdUI.TabPage { Text = "自动强化", BackColor = Color.FromArgb(245, 246, 248) };
-        _gearExportTab = new AntdUI.TabPage { Text = "装备导出", BackColor = Color.FromArgb(245, 246, 248) };
+        _gearExportTab = new AntdUI.TabPage { Text = "战力分析", BackColor = Color.FromArgb(245, 246, 248) };
         _starForgeTab = new AntdUI.TabPage { Text = "星之铁匠铺", BackColor = Color.FromArgb(245, 246, 248) };
         var demandTab = new AntdUI.TabPage { Text = "需求分析", BackColor = Color.White };
         _settingsTab = new AntdUI.TabPage { Text = "软件设置", BackColor = Color.FromArgb(245, 246, 248) };

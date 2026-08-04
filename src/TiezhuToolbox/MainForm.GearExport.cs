@@ -34,7 +34,7 @@ public partial class MainForm
 
         var title = new Label
         {
-            Text = "装备导出",
+            Text = "战力分析",
             Font = new Font("Microsoft YaHei UI", 17F, FontStyle.Bold),
             ForeColor = TextDarkColor,
             Location = new Point(22, 16),
@@ -269,7 +269,7 @@ public partial class MainForm
             _gearScanner.Start();
             SetGearExportUiState("扫描中", scanning: true, canExport: false);
             AppendGearExportStatus("已开始扫描。请打开第七史诗并进入大厅，然后点击「停止并解包」。");
-            UpdateStatus("装备导出：扫描中");
+            UpdateStatus("战力分析：扫描中");
         }
         catch (Exception ex)
         {
@@ -277,7 +277,7 @@ public partial class MainForm
             _gearScanner = null;
             SetGearExportUiState("启动失败", scanning: false, canExport: false);
             AppendGearExportStatus("启动失败：" + ex.Message);
-            UpdateStatus("装备导出启动失败：" + ex.Message);
+            UpdateStatus("战力分析启动失败：" + ex.Message);
         }
 
         await Task.CompletedTask;
@@ -293,7 +293,7 @@ public partial class MainForm
         _btnGearScanStart.Enabled = false;
         _btnGearScanStop.Enabled = false;
         AppendGearExportStatus("正在停止抓包并请求第三方解包，请稍候……");
-        UpdateStatus("装备导出：解包中");
+        UpdateStatus("战力分析：解包中");
 
         try
         {
@@ -313,14 +313,14 @@ public partial class MainForm
                 $"已解包 {result.ExportedItemCount} 件",
                 scanning: false,
                 canExport: result.ExportedItemCount > 0);
-            UpdateStatus($"装备导出完成：{result.ExportedItemCount} 件");
+            UpdateStatus($"战力分析完成：{result.ExportedItemCount} 件");
         }
         catch (Exception ex)
         {
             _gearExportDocument = null;
             AppendGearExportStatus("失败：" + ex.Message);
             SetGearExportUiState("失败", scanning: false, canExport: false);
-            UpdateStatus("装备导出失败：" + ex.Message);
+            UpdateStatus("战力分析失败：" + ex.Message);
         }
         finally
         {
@@ -413,7 +413,7 @@ public partial class MainForm
             fromFile
                 ? $"正在上传到百里分析：{filePath}"
                 : "正在上传当前解包结果到百里战力分析……");
-        UpdateStatus("装备导出：百里战力分析中");
+        UpdateStatus("战力分析：百里战力分析中");
 
         try
         {
