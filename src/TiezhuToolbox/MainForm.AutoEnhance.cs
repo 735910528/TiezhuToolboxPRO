@@ -8,6 +8,7 @@ public partial class MainForm
     private AntdUI.TabPage _autoEnhanceTab = null!;
     private AntdUI.Button _btnAutoStart = null!;
     private AntdUI.Button _btnAutoStop = null!;
+    private AntdUI.Button _btnAutoOpenSettings = null!;
     private AntdUI.Button _btnAutoClearLog = null!;
     private AntdUI.Button _btnAutoOpenLog = null!;
     private AntdUI.Button _btnAutoOpenScreenshot = null!;
@@ -93,10 +94,22 @@ public partial class MainForm
             Text = "目标：跟随顶部 ADB/窗口选择",
             ForeColor = TextDarkColor,
             Location = new Point(24, 123),
-            Size = new Size(300, 34),
+            Size = new Size(240, 34),
             TextAlign = ContentAlignment.MiddleLeft,
             AutoEllipsis = true,
         };
+        _btnAutoOpenSettings = new AntdUI.Button
+        {
+            Text = "强化设置",
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Location = new Point(600, 123),
+            Size = new Size(96, 34),
+            Radius = 6,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+        };
+        _btnAutoOpenSettings.Click += (_, _) => OpenAutoEnhanceSettings();
         _btnAutoStart = new AntdUI.Button
         {
             Text = "开始自动强化",
@@ -137,10 +150,14 @@ public partial class MainForm
             warning.Width = Math.Max(ScalePixel(300), controlCard.ClientSize.Width - ScalePixel(48));
             _btnAutoStop.Left = controlCard.ClientSize.Width - ScalePixel(110);
             _btnAutoStart.Left = _btnAutoStop.Left - ScalePixel(140);
+            _btnAutoOpenSettings.Left = _btnAutoStart.Left - ScalePixel(104);
+            _lblAutoDevice.Width = Math.Max(
+                ScalePixel(120),
+                _btnAutoOpenSettings.Left - _lblAutoDevice.Left - ScalePixel(12));
         };
         controlCard.Controls.AddRange(new Control[]
         {
-            title, hint, warning, _lblAutoDevice, _btnAutoStart, _btnAutoStop,
+            title, hint, warning, _lblAutoDevice, _btnAutoOpenSettings, _btnAutoStart, _btnAutoStop,
         });
 
         EnsureAutoLogControl();

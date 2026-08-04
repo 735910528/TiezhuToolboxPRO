@@ -8,6 +8,9 @@ public partial class MainForm
     private readonly HashSet<string> _disabledDemandProfiles = new(StringComparer.Ordinal);
     private AntdUI.Tabs _mainTabs = null!;
     private AntdUI.TabPage _equipmentTab = null!;
+    private AntdUI.TabPage _settingsTab = null!;
+    private Panel _settingsScrollHost = null!;
+    private Control _autoEnhanceSettingsAnchor = null!;
     private DemandBrowserControl _demandBrowserControl = null!;
     private bool _isLoadingSettings;
     private Label _settingsRulesLabel = null!;
@@ -41,7 +44,7 @@ public partial class MainForm
         _autoEnhanceTab = new AntdUI.TabPage { Text = "自动强化", BackColor = Color.FromArgb(245, 246, 248) };
         _starForgeTab = new AntdUI.TabPage { Text = "星之铁匠铺", BackColor = Color.FromArgb(245, 246, 248) };
         var demandTab = new AntdUI.TabPage { Text = "需求分析", BackColor = Color.White };
-        var settingsTab = new AntdUI.TabPage { Text = "软件设置", BackColor = Color.FromArgb(245, 246, 248) };
+        _settingsTab = new AntdUI.TabPage { Text = "软件设置", BackColor = Color.FromArgb(245, 246, 248) };
 
         _equipmentTab.Controls.Add(mainTable);
         _equipmentTab.Controls.Add(pnlScreenshot);
@@ -79,14 +82,14 @@ public partial class MainForm
         ScaleRuntimePage(starForgeContent);
 
         var settingsContent = CreateSettingsContent();
-        settingsTab.Controls.Add(settingsContent);
+        _settingsTab.Controls.Add(settingsContent);
         ScaleRuntimePage(settingsContent);
 
         _mainTabs.Pages.Add(_equipmentTab);
         _mainTabs.Pages.Add(_autoEnhanceTab);
         _mainTabs.Pages.Add(_starForgeTab);
         _mainTabs.Pages.Add(demandTab);
-        _mainTabs.Pages.Add(settingsTab);
+        _mainTabs.Pages.Add(_settingsTab);
         _mainTabs.SelectedIndex = 0;
         _mainTabs.SelectedIndexChanged += MainTabs_SelectedIndexChanged;
         Controls.Add(_mainTabs);
@@ -127,7 +130,7 @@ public partial class MainForm
 
     private Control CreateSettingsContent()
     {
-        var host = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(24) };
+        _settingsScrollHost = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(24) };
         var card = new Panel
         {
             BackColor = Color.White,
@@ -135,9 +138,9 @@ public partial class MainForm
             Size = new Size(720, 1080),
             Padding = new Padding(24),
         };
-        host.Resize += (_, _) => card.Width = Math.Min(
+        _settingsScrollHost.Resize += (_, _) => card.Width = Math.Min(
             ScalePixel(760),
-            Math.Max(ScalePixel(560), host.ClientSize.Width - ScalePixel(48)));
+            Math.Max(ScalePixel(560), _settingsScrollHost.ClientSize.Width - ScalePixel(48)));
 
         var title = new Label
         {
@@ -172,10 +175,11 @@ public partial class MainForm
                  { lblRecognitionGroup, lblRecognitionHotKey, lblRecognitionInterval, lblIntervalUnit })
             ConfigureSettingsRowLabel(label);
 
-        var automationTitle = CreateSettingsHeading(
+        _autoEnhanceSettingsAnchor = CreateSettingsHeading(
             "自动强化",
             "设置淘汰装备的处理方式、单次处理上限、最低需求匹配度和赌速度规则。",
             314);
+        var automationTitle = _autoEnhanceSettingsAnchor;
         var automationPanel = new FlowLayoutPanel
         {
             Location = new Point(24, 384),
@@ -393,8 +397,31 @@ public partial class MainForm
         card.Controls.Add(thresholdPanel);
         card.Controls.Add(scoreTitle);
         card.Controls.Add(title);
-        host.Controls.Add(card);
-        return host;
+        _settingsScrollHost.Controls.Add(card);
+        return _settingsScrollHost;
+    }
+
+    /// <summary>从自动强化页跳转到软件设置中的自动强化配置区。</summary>
+    private void OpenAutoEnhanceSettings()
+    {
+        if (_mainTabs == null || _settingsTab == null)
+            return;
+
+        _mainTabs.SelectedTab = _settingsTab;
+        BeginInvoke(() =>
+        {
+            if (_settingsScrollHost == null || _autoEnhanceSettingsAnchor == null
+                || _settingsScrollHost.IsDisposed || _autoEnhanceSettingsAnchor.IsDisposed)
+                return;
+
+            _settingsScrollHost.ScrollControlIntoView(_autoEnhanceSettingsAnchor);
+            // ScrollControlIntoView 在部分 DPI/布局下偏弱，再用位置对齐一次。
+            var card = _autoEnhanceSettingsAnchor.Parent;
+            if (card == null)
+                return;
+            var y = Math.Max(0, card.Top + _autoEnhanceSettingsAnchor.Top - ScalePixel(12));
+            _settingsScrollHost.AutoScrollPosition = new Point(0, y);
+        });
     }
 
     private static Label CreateLegendarySpeedLabel(string text)

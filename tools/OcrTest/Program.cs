@@ -437,6 +437,18 @@ if (args.Contains("--ui-smoke"))
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             if (!autoStart.Enabled || !autoOpenLog.Enabled || autoResultGrid.ColumnCount < 8 || timer.Enabled)
                 throw new InvalidOperationException("自动强化页初始状态不正确");
+            var autoOpenSettings = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoOpenSettings",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            if (!autoOpenSettings.Enabled || autoOpenSettings.Text != "强化设置")
+                throw new InvalidOperationException("自动强化页缺少强化设置入口");
+            typeof(Control).GetMethod("OnClick",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(autoOpenSettings, new object[] { EventArgs.Empty });
+            Application.DoEvents();
+            if ((int)selectedIndex.GetValue(tabs)! != 4)
+                throw new InvalidOperationException("强化设置入口未跳转到软件设置页");
+            selectedIndex.SetValue(tabs, 1);
+            Application.DoEvents();
             if (autoResultGrid.Right < autoResultGrid.Parent!.ClientSize.Width - autoResultGrid.Parent.Padding.Right - 2)
                 throw new InvalidOperationException(
                     $"自动强化结果表未填满内容区：表格={autoResultGrid.Bounds}，父容器={autoResultGrid.Parent.ClientSize}");
