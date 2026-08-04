@@ -11,6 +11,7 @@ public partial class MainForm
     private AntdUI.Button _btnAutoClearLog = null!;
     private AntdUI.Button _btnAutoOpenLog = null!;
     private AntdUI.Button _btnAutoOpenScreenshot = null!;
+    private AntdUI.Select _comboAutoResultFilter = null!;
     private AntdUI.InputNumber _numAutoMaxEquipment = null!;
     private AntdUI.Select _comboAutoDisposalMethod = null!;
     private AntdUI.InputNumber _numHeroMatchThreshold = null!;
@@ -28,10 +29,12 @@ public partial class MainForm
     private Label _lblAutoState = null!;
     private Label _lblAutoStats = null!;
     private DataGridView _autoResultGrid = null!;
+    private readonly List<AutoEnhancementEquipmentRecord> _autoResultRecords = new();
     private RichTextBox _autoLog = null!;
     private Form? _autoLogForm;
     private bool _autoLogFormAllowClose;
     private CancellationTokenSource? _autoEnhanceCancellation;
+    private bool _isUpdatingAutoResultFilter;
 
     private bool IsAutoEnhancing => _autoEnhanceCancellation != null;
 
@@ -170,8 +173,35 @@ public partial class MainForm
             Text = "未开始",
             ForeColor = AdviceNoneColor,
             Dock = DockStyle.Left,
-            Width = 120,
+            Width = 100,
             TextAlign = ContentAlignment.MiddleLeft,
+        };
+        var filterLabel = new Label
+        {
+            Text = "结果",
+            ForeColor = Color.FromArgb(95, 99, 104),
+            Dock = DockStyle.Left,
+            Width = 36,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+        _comboAutoResultFilter = new AntdUI.Select
+        {
+            Dock = DockStyle.Left,
+            Width = 96,
+            Radius = 6,
+            List = true,
+            ReadOnly = false,
+        };
+        _comboAutoResultFilter.Items.Add("全部");
+        _comboAutoResultFilter.Items.Add("保留");
+        _comboAutoResultFilter.Items.Add("出售");
+        _comboAutoResultFilter.Items.Add("分解");
+        _comboAutoResultFilter.SelectedIndex = 0;
+        _comboAutoResultFilter.SelectedIndexChanged += (_, _) =>
+        {
+            if (_isUpdatingAutoResultFilter)
+                return;
+            RefreshAutoResultGrid();
         };
         _lblAutoStats = new Label
         {
@@ -212,12 +242,13 @@ public partial class MainForm
             _btnAutoOpenScreenshot.Left = Math.Max(0, resultHeader.ClientSize.Width - _btnAutoOpenScreenshot.Width);
             _btnAutoOpenLog.Left = Math.Max(0, _btnAutoOpenScreenshot.Left - _btnAutoOpenLog.Width - ScalePixel(8));
             _lblAutoStats.Left = Math.Max(
-                ScalePixel(220),
+                ScalePixel(320),
                 _btnAutoOpenLog.Left - _lblAutoStats.Width - ScalePixel(8));
         };
         resultHeader.Controls.AddRange(new Control[]
         {
-            resultTitle, _lblAutoState, _lblAutoStats, _btnAutoOpenLog, _btnAutoOpenScreenshot,
+            resultTitle, _lblAutoState, filterLabel, _comboAutoResultFilter,
+            _lblAutoStats, _btnAutoOpenLog, _btnAutoOpenScreenshot,
         });
 
         _autoResultGrid = new DataGridView
@@ -399,6 +430,7 @@ public partial class MainForm
             return;
 
         ClearAutoResultGrid();
+        ResetAutoResultFilter();
         if (_autoLog != null && !_autoLog.IsDisposed)
             _autoLog.Clear();
         _autoEnhanceCancellation = new CancellationTokenSource();
@@ -519,11 +551,42 @@ public partial class MainForm
 
     private void ClearAutoResultGrid()
     {
+        _autoResultRecords.Clear();
         if (_autoResultGrid == null || _autoResultGrid.IsDisposed)
             return;
         _autoResultGrid.Rows.Clear();
         _btnAutoOpenScreenshot.Enabled = false;
     }
+
+    private void ResetAutoResultFilter()
+    {
+        if (_comboAutoResultFilter == null || _comboAutoResultFilter.IsDisposed)
+            return;
+        _isUpdatingAutoResultFilter = true;
+        try
+        {
+            _comboAutoResultFilter.SelectedIndex = 0;
+        }
+        finally
+        {
+            _isUpdatingAutoResultFilter = false;
+        }
+    }
+
+    private string GetSelectedAutoResultFilter()
+        => _comboAutoResultFilter.SelectedValue as string
+           ?? _comboAutoResultFilter.Text
+           ?? "全部";
+
+    private static bool MatchesAutoResultFilter(AutoEnhancementEquipmentRecord record, string filter)
+        => filter switch
+        {
+            "保留" => record.Outcome is AutoEnhancementOutcome.Kept
+                or AutoEnhancementOutcome.KeptAndStopped,
+            "出售" => record.Outcome == AutoEnhancementOutcome.Sold,
+            "分解" => record.Outcome == AutoEnhancementOutcome.Extracted,
+            _ => true,
+        };
 
     private void SyncAutoResultGrid(AutoEnhancementSummary summary)
     {
@@ -534,12 +597,17 @@ public partial class MainForm
             summary.Processed, summary.Kept, summary.Sold, summary.Extracted, summary.Enhanced);
 
         // 进度回调可能因线程时序漏行；结束时按完整清单对齐一次。
-        if (_autoResultGrid.Rows.Count == summary.Equipment.Count)
+        if (_autoResultRecords.Count == summary.Equipment.Count
+            && _autoResultRecords.Select(item => item.Index)
+                .SequenceEqual(summary.Equipment.Select(item => item.Index)))
+        {
+            RefreshAutoResultGrid();
             return;
+        }
 
-        ClearAutoResultGrid();
-        foreach (var item in summary.Equipment)
-            AddAutoResultRow(item);
+        _autoResultRecords.Clear();
+        _autoResultRecords.AddRange(summary.Equipment);
+        RefreshAutoResultGrid();
     }
 
     private void AddAutoResultRow(AutoEnhancementEquipmentRecord record)
@@ -553,15 +621,49 @@ public partial class MainForm
         }
 
         // 同序号只保留最后一次判定（强化过程中多阶段截图不应重复占行）。
-        for (var i = _autoResultGrid.Rows.Count - 1; i >= 0; i--)
+        for (var i = _autoResultRecords.Count - 1; i >= 0; i--)
         {
-            if (_autoResultGrid.Rows[i].Tag is AutoEnhancementEquipmentRecord existing
-                && existing.Index == record.Index)
-            {
-                _autoResultGrid.Rows.RemoveAt(i);
-            }
+            if (_autoResultRecords[i].Index == record.Index)
+                _autoResultRecords.RemoveAt(i);
         }
 
+        _autoResultRecords.Add(record);
+        RefreshAutoResultGrid();
+    }
+
+    private void RefreshAutoResultGrid()
+    {
+        if (_autoResultGrid == null || _autoResultGrid.IsDisposed)
+            return;
+        if (_autoResultGrid.InvokeRequired)
+        {
+            _autoResultGrid.BeginInvoke(RefreshAutoResultGrid);
+            return;
+        }
+
+        var filter = GetSelectedAutoResultFilter();
+        var visible = _autoResultRecords
+            .Where(record => MatchesAutoResultFilter(record, filter))
+            .OrderBy(record => record.Index)
+            .ToList();
+
+        _autoResultGrid.Rows.Clear();
+        foreach (var record in visible)
+            AppendAutoResultGridRow(record);
+
+        _btnAutoOpenScreenshot.Enabled = TryGetSelectedAutoResult(out _);
+        if (_autoResultGrid.Rows.Count > 0)
+        {
+            _autoResultGrid.ClearSelection();
+            var last = _autoResultGrid.Rows.Count - 1;
+            _autoResultGrid.Rows[last].Selected = true;
+            _autoResultGrid.FirstDisplayedScrollingRowIndex = Math.Max(0, last);
+            _btnAutoOpenScreenshot.Enabled = TryGetSelectedAutoResult(out _);
+        }
+    }
+
+    private void AppendAutoResultGridRow(AutoEnhancementEquipmentRecord record)
+    {
         var rowIndex = _autoResultGrid.Rows.Add(
             record.Index,
             record.SetName,
@@ -581,11 +683,6 @@ public partial class MainForm
             AutoEnhancementOutcome.Sold or AutoEnhancementOutcome.Extracted => AdviceGiveUpColor,
             _ => TextDarkColor,
         };
-        _autoResultGrid.ClearSelection();
-        row.Selected = true;
-        _autoResultGrid.FirstDisplayedScrollingRowIndex = Math.Max(0, rowIndex);
-        _btnAutoOpenScreenshot.Enabled = !string.IsNullOrWhiteSpace(record.ScreenshotPath)
-            && File.Exists(record.ScreenshotPath);
     }
 
     private bool TryGetSelectedAutoResult(out AutoEnhancementEquipmentRecord record)
