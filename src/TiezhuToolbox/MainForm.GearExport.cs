@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using TiezhuToolbox.Modules.GearExport;
 
 namespace TiezhuToolbox;
@@ -51,14 +52,51 @@ public partial class MainForm
             Text = "流程：安装 Python3 + Npcap → 模拟器保持开启并先关闭游戏 → 开始扫描 → 打开游戏进大厅 → 停止并解包 → 导出 gear.txt。",
             ForeColor = Color.FromArgb(95, 99, 104),
             Location = new Point(24, 90),
-            Size = new Size(900, 40),
+            Size = new Size(900, 28),
         };
+        var pathTip = new Label
+        {
+            Text = "Python 安装提示：务必勾选 “Add python.exe to PATH”（将 Python 添加到环境变量），装完后建议重启本程序再扫描。",
+            ForeColor = AccentColor,
+            Font = new Font("Microsoft YaHei UI", 9.25F, FontStyle.Bold),
+            Location = new Point(24, 120),
+            Size = new Size(900, 28),
+            AutoEllipsis = true,
+        };
+
+        var btnOpenPythonDownload = new AntdUI.Button
+        {
+            Text = "下载 Python",
+            Location = new Point(24, 156),
+            Size = new Size(120, 34),
+            Radius = 6,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+        };
+        btnOpenPythonDownload.Click += (_, _) => OpenGearExportDownloadUrl(
+            "https://www.python.org/downloads/windows/",
+            "Python");
+
+        var btnOpenNpcapDownload = new AntdUI.Button
+        {
+            Text = "下载 Npcap",
+            Location = new Point(156, 156),
+            Size = new Size(120, 34),
+            Radius = 6,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+        };
+        btnOpenNpcapDownload.Click += (_, _) => OpenGearExportDownloadUrl(
+            "https://npcap.com/#download",
+            "Npcap");
 
         _lblGearExportState = new Label
         {
             Text = "状态：未开始",
             ForeColor = TextDarkColor,
-            Location = new Point(24, 140),
+            Location = new Point(24, 200),
             Size = new Size(420, 32),
             TextAlign = ContentAlignment.MiddleLeft,
         };
@@ -66,7 +104,7 @@ public partial class MainForm
         _btnGearScanStart = new AntdUI.Button
         {
             Text = "开始扫描",
-            Location = new Point(24, 184),
+            Location = new Point(24, 240),
             Size = new Size(120, 36),
             Radius = 6,
             Type = AntdUI.TTypeMini.Primary,
@@ -76,7 +114,7 @@ public partial class MainForm
         _btnGearScanStop = new AntdUI.Button
         {
             Text = "停止并解包",
-            Location = new Point(156, 184),
+            Location = new Point(156, 240),
             Size = new Size(120, 36),
             Radius = 6,
             Enabled = false,
@@ -89,7 +127,7 @@ public partial class MainForm
         _btnGearExportFile = new AntdUI.Button
         {
             Text = "导出 gear.txt",
-            Location = new Point(288, 184),
+            Location = new Point(288, 240),
             Size = new Size(132, 36),
             Radius = 6,
             Enabled = false,
@@ -101,8 +139,8 @@ public partial class MainForm
 
         _txtGearExportStatus = new RichTextBox
         {
-            Location = new Point(24, 240),
-            Size = new Size(900, 360),
+            Location = new Point(24, 292),
+            Size = new Size(900, 320),
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             ReadOnly = true,
             BackColor = Color.FromArgb(248, 249, 250),
@@ -112,12 +150,13 @@ public partial class MainForm
             DetectUrls = false,
         };
         AppendGearExportStatus(
-            "准备就绪。本功能不依赖顶部 ADB/窗口连接；需本机 Python 与 Npcap（Scapy 已随程序附带）。");
+            "准备就绪。需本机 Python 与 Npcap（Scapy 已随程序附带）。可用上方按钮打开官网下载页。");
 
         card.Resize += (_, _) =>
         {
             warning.Width = Math.Max(ScalePixel(300), card.ClientSize.Width - ScalePixel(48));
             hint.Width = warning.Width;
+            pathTip.Width = warning.Width;
             _txtGearExportStatus.Width = Math.Max(ScalePixel(300), card.ClientSize.Width - ScalePixel(48));
             _txtGearExportStatus.Height = Math.Max(
                 ScalePixel(160),
@@ -126,11 +165,32 @@ public partial class MainForm
 
         card.Controls.AddRange(new Control[]
         {
-            title, warning, hint, _lblGearExportState,
+            title, warning, hint, pathTip,
+            btnOpenPythonDownload, btnOpenNpcapDownload,
+            _lblGearExportState,
             _btnGearScanStart, _btnGearScanStop, _btnGearExportFile, _txtGearExportStatus,
         });
         host.Controls.Add(card);
         return host;
+    }
+
+    private void OpenGearExportDownloadUrl(string url, string name)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            AppendGearExportStatus($"已打开 {name} 官网下载页。");
+            if (name == "Python")
+            {
+                AppendGearExportStatus(
+                    "安装 Python 时请勾选 “Add python.exe to PATH”，否则程序找不到 python/py 命令。");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppendGearExportStatus($"打开 {name} 下载页失败：{ex.Message}");
+            UpdateStatus($"无法打开浏览器：{ex.Message}");
+        }
     }
 
     private void AppendGearExportStatus(string message)
