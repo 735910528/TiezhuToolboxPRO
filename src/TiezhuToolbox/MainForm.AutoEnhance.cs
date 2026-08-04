@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using TiezhuToolbox.Modules.Automation;
+using TiezhuToolbox.Modules.Recommend;
 
 namespace TiezhuToolbox;
 
@@ -34,6 +35,10 @@ public partial class MainForm
     private RichTextBox _autoLog = null!;
     private Form? _autoLogForm;
     private bool _autoLogFormAllowClose;
+    private Form? _autoEnhanceSettingsForm;
+    private bool _autoEnhanceSettingsFormAllowClose;
+    private Panel _autoEnhanceSettingsPanel = null!;
+    private bool _autoEnhanceSettingsScaled;
     private CancellationTokenSource? _autoEnhanceCancellation;
     private bool _isUpdatingAutoResultFilter;
 
@@ -109,7 +114,7 @@ public partial class MainForm
             DefaultBack = Color.White,
             DefaultBorderColor = Color.FromArgb(218, 220, 224),
         };
-        _btnAutoOpenSettings.Click += (_, _) => OpenAutoEnhanceSettings();
+        _btnAutoOpenSettings.Click += (_, _) => ShowAutoEnhanceSettingsWindow();
         _btnAutoStart = new AntdUI.Button
         {
             Text = "开始自动强化",
@@ -416,6 +421,261 @@ public partial class MainForm
             }
         };
         _autoLogForm.Show(this);
+    }
+
+    private void EnsureAutoEnhanceSettingsControls()
+    {
+        if (_autoEnhanceSettingsPanel != null && !_autoEnhanceSettingsPanel.IsDisposed)
+            return;
+
+        _autoEnhanceSettingsPanel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            BackColor = Color.White,
+            Padding = new Padding(20),
+        };
+
+        var title = new Label
+        {
+            Text = "自动强化设置",
+            Font = new Font("Microsoft YaHei UI", 14F, FontStyle.Bold),
+            ForeColor = TextDarkColor,
+            Location = new Point(20, 16),
+            AutoSize = true,
+        };
+        var hint = new Label
+        {
+            Text = "设置淘汰装备的处理方式、单次处理上限、最低需求匹配度和赌速度规则。",
+            ForeColor = Color.FromArgb(95, 99, 104),
+            Location = new Point(22, 52),
+            Size = new Size(640, 24),
+            AutoEllipsis = true,
+        };
+
+        var automationPanel = new FlowLayoutPanel
+        {
+            Location = new Point(20, 92),
+            Size = new Size(690, 34),
+            AutoSize = false,
+            WrapContents = false,
+            Margin = Padding.Empty,
+        };
+        var disposalLabel = new Label
+        {
+            Text = "装备处理方式",
+            ForeColor = TextDarkColor,
+            Size = new Size(96, 34),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = Padding.Empty,
+        };
+        _comboAutoDisposalMethod = new AntdUI.Select
+        {
+            List = true,
+            ReadOnly = false,
+            Size = new Size(86, 34),
+            Radius = 6,
+            Margin = new Padding(0, 0, 18, 0),
+        };
+        _comboAutoDisposalMethod.Items.AddRange(new object[] { "出售", "分解" });
+        _comboAutoDisposalMethod.SelectedIndexChanged += (_, _) => SaveSettingsFromControls();
+
+        var maxLabel = new Label
+        {
+            Text = "最多处理",
+            ForeColor = TextDarkColor,
+            Size = new Size(65, 34),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = Padding.Empty,
+        };
+        _numAutoMaxEquipment = new AntdUI.InputNumber
+        {
+            Size = new Size(76, 34),
+            Minimum = 1,
+            Maximum = 999,
+            Value = 50,
+            Radius = 6,
+            Margin = Padding.Empty,
+        };
+        _numAutoMaxEquipment.ValueChanged += (_, _) => SaveSettingsFromControls();
+        var maxUnit = new Label
+        {
+            Text = "件",
+            ForeColor = TextDarkColor,
+            Size = new Size(32, 34),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = new Padding(4, 0, 14, 0),
+        };
+        var matchLabel = new Label
+        {
+            Text = "最低需求匹配度",
+            ForeColor = TextDarkColor,
+            Size = new Size(106, 34),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = Padding.Empty,
+        };
+        _numHeroMatchThreshold = new AntdUI.InputNumber
+        {
+            Size = new Size(76, 34),
+            Minimum = 0,
+            Maximum = 100,
+            Value = 70,
+            Radius = 6,
+            Margin = Padding.Empty,
+        };
+        _numHeroMatchThreshold.ValueChanged += (_, _) =>
+        {
+            SaveSettingsFromControls();
+            UpdateAdvice();
+        };
+        var matchUnit = new Label
+        {
+            Text = "%",
+            ForeColor = TextDarkColor,
+            Size = new Size(26, 34),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = new Padding(4, 0, 0, 0),
+        };
+        automationPanel.Controls.AddRange(new Control[]
+        {
+            disposalLabel, _comboAutoDisposalMethod, maxLabel, _numAutoMaxEquipment,
+            maxUnit, matchLabel, _numHeroMatchThreshold, matchUnit,
+        });
+
+        var legendarySpeedTitle = new Label
+        {
+            Text = "传说装备赌速度\r\n仅红装生效；各档为该强化阶段前要求的最低速度。紫装仍用固定严格阶梯 3/6/9/12/12，终局 15。",
+            Font = new Font("Microsoft YaHei UI", 10.5F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(32, 33, 36),
+            Location = new Point(20, 144),
+            Size = new Size(650, 52),
+        };
+        var legendarySpeedPanel = new FlowLayoutPanel
+        {
+            Location = new Point(20, 204),
+            Size = new Size(690, 40),
+            AutoSize = false,
+            WrapContents = false,
+            Margin = Padding.Empty,
+        };
+        _numLegendarySpeedPlus3 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus3);
+        _numLegendarySpeedPlus6 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus6);
+        _numLegendarySpeedPlus9 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus9);
+        _numLegendarySpeedPlus12 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus12);
+        _numLegendarySpeedPlus15 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus15);
+        _numLegendarySpeedFinal = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultFinalPlus15);
+        legendarySpeedPanel.Controls.AddRange(new Control[]
+        {
+            CreateLegendarySpeedLabel("+3前"), _numLegendarySpeedPlus3,
+            CreateLegendarySpeedLabel("+6前"), _numLegendarySpeedPlus6,
+            CreateLegendarySpeedLabel("+9前"), _numLegendarySpeedPlus9,
+            CreateLegendarySpeedLabel("+12前"), _numLegendarySpeedPlus12,
+            CreateLegendarySpeedLabel("+15前"), _numLegendarySpeedPlus15,
+            CreateLegendarySpeedLabel("+15终"), _numLegendarySpeedFinal,
+        });
+
+        _chkHeroicOnlyGambleSpeed = new AntdUI.Checkbox
+        {
+            Text = "紫装只赌速度（忽略分数和匹配度，速度不达标立即处理）",
+            Checked = false,
+            Location = new Point(20, 258),
+            Size = new Size(470, 34),
+        };
+        _chkHeroicOnlyGambleSpeed.CheckedChanged += (_, _) =>
+        {
+            SaveSettingsFromControls();
+            UpdateAdvice();
+        };
+
+        _chkSpeedSetRequiresSpeed = new AntdUI.Checkbox
+        {
+            Text = "速度套只强化带速度的装备（鞋子看主属性，其他部位看副属性）",
+            Checked = true,
+            Location = new Point(20, 294),
+            Size = new Size(520, 34),
+        };
+        _chkSpeedSetRequiresSpeed.CheckedChanged += (_, _) =>
+        {
+            SaveSettingsFromControls();
+            UpdateAdvice();
+        };
+
+        _chkCriticalNecklaceMainStatRule = new AntdUI.Checkbox
+        {
+            Text = "暴击/暴伤高权重子类的项链只强化对应主属性",
+            Checked = true,
+            Location = new Point(20, 330),
+            Size = new Size(520, 34),
+        };
+        _chkCriticalNecklaceMainStatRule.CheckedChanged += (_, _) =>
+        {
+            SaveSettingsFromControls();
+            UpdateAdvice();
+        };
+
+        _chkAutoStopOnValuableEquipment = new AntdUI.Checkbox
+        {
+            Text = "遇到符合保留条件的装备后停止（关闭后将返回背包并继续下一件）",
+            Checked = true,
+            Location = new Point(20, 366),
+            Size = new Size(520, 34),
+        };
+        _chkAutoStopOnValuableEquipment.CheckedChanged += (_, _) => SaveSettingsFromControls();
+
+        _autoEnhanceSettingsPanel.Controls.AddRange(new Control[]
+        {
+            title, hint, automationPanel, legendarySpeedTitle, legendarySpeedPanel,
+            _chkHeroicOnlyGambleSpeed, _chkSpeedSetRequiresSpeed,
+            _chkCriticalNecklaceMainStatRule, _chkAutoStopOnValuableEquipment,
+        });
+    }
+
+    private void ShowAutoEnhanceSettingsWindow()
+    {
+        EnsureAutoEnhanceSettingsControls();
+        if (!_autoEnhanceSettingsScaled)
+        {
+            ScaleRuntimePage(_autoEnhanceSettingsPanel);
+            _autoEnhanceSettingsScaled = true;
+        }
+
+        if (_autoEnhanceSettingsForm != null && !_autoEnhanceSettingsForm.IsDisposed)
+        {
+            if (_autoEnhanceSettingsForm.WindowState == FormWindowState.Minimized)
+                _autoEnhanceSettingsForm.WindowState = FormWindowState.Normal;
+            _autoEnhanceSettingsForm.Show();
+            _autoEnhanceSettingsForm.BringToFront();
+            _autoEnhanceSettingsForm.Activate();
+            return;
+        }
+
+        if (_autoEnhanceSettingsPanel.Parent != null)
+            _autoEnhanceSettingsPanel.Parent.Controls.Remove(_autoEnhanceSettingsPanel);
+
+        _autoEnhanceSettingsForm = new Form
+        {
+            Text = "自动强化设置",
+            StartPosition = FormStartPosition.CenterParent,
+            Size = new Size(760, 500),
+            MinimumSize = new Size(640, 420),
+            ShowInTaskbar = false,
+            MinimizeBox = true,
+            MaximizeBox = false,
+            Owner = this,
+        };
+        if (Icon != null)
+            _autoEnhanceSettingsForm.Icon = Icon;
+        _autoEnhanceSettingsForm.Controls.Add(_autoEnhanceSettingsPanel);
+        _autoEnhanceSettingsFormAllowClose = false;
+        _autoEnhanceSettingsForm.FormClosing += (_, e) =>
+        {
+            if (!_autoEnhanceSettingsFormAllowClose && e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                _autoEnhanceSettingsForm.Hide();
+            }
+        };
+        _autoEnhanceSettingsForm.Show(this);
     }
 
     private async void btnAutoStart_Click(object? sender, EventArgs e)

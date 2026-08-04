@@ -10,7 +10,6 @@ public partial class MainForm
     private AntdUI.TabPage _equipmentTab = null!;
     private AntdUI.TabPage _settingsTab = null!;
     private Panel _settingsScrollHost = null!;
-    private Control _autoEnhanceSettingsAnchor = null!;
     private DemandBrowserControl _demandBrowserControl = null!;
     private bool _isLoadingSettings;
     private Label _settingsRulesLabel = null!;
@@ -175,184 +174,31 @@ public partial class MainForm
                  { lblRecognitionGroup, lblRecognitionHotKey, lblRecognitionInterval, lblIntervalUnit })
             ConfigureSettingsRowLabel(label);
 
-        _autoEnhanceSettingsAnchor = CreateSettingsHeading(
+        EnsureAutoEnhanceSettingsControls();
+        var automationTitle = CreateSettingsHeading(
             "自动强化",
-            "设置淘汰装备的处理方式、单次处理上限、最低需求匹配度和赌速度规则。",
+            "装备处理方式、最多处理、需求匹配度与赌速度规则在独立窗口中配置。",
             314);
-        var automationTitle = _autoEnhanceSettingsAnchor;
-        var automationPanel = new FlowLayoutPanel
+        var openAutoSettings = new AntdUI.Button
         {
+            Text = "打开自动强化设置",
             Location = new Point(24, 384),
-            Size = new Size(690, 34),
-            AutoSize = false,
-            WrapContents = false,
-            Margin = Padding.Empty,
-        };
-        var disposalLabel = new Label
-        {
-            Text = "装备处理方式",
-            ForeColor = TextDarkColor,
-            Size = new Size(96, 34),
-            TextAlign = ContentAlignment.MiddleLeft,
-            Margin = Padding.Empty,
-        };
-        _comboAutoDisposalMethod = new AntdUI.Select
-        {
-            List = true,
-            ReadOnly = false,
-            Size = new Size(86, 34),
+            Size = new Size(160, 34),
             Radius = 6,
-            Margin = new Padding(0, 0, 18, 0),
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
         };
-        _comboAutoDisposalMethod.Items.AddRange(new object[] { "出售", "分解" });
-        _comboAutoDisposalMethod.SelectedIndexChanged += (_, _) => SaveSettingsFromControls();
-
-        var maxLabel = new Label
-        {
-            Text = "最多处理",
-            ForeColor = TextDarkColor,
-            Size = new Size(65, 34),
-            TextAlign = ContentAlignment.MiddleLeft,
-            Margin = Padding.Empty,
-        };
-        _numAutoMaxEquipment = new AntdUI.InputNumber
-        {
-            Size = new Size(76, 34),
-            Minimum = 1,
-            Maximum = 999,
-            Value = 50,
-            Radius = 6,
-            Margin = Padding.Empty,
-        };
-        _numAutoMaxEquipment.ValueChanged += (_, _) => SaveSettingsFromControls();
-        var maxUnit = new Label
-        {
-            Text = "件",
-            ForeColor = TextDarkColor,
-            Size = new Size(32, 34),
-            TextAlign = ContentAlignment.MiddleLeft,
-            Margin = new Padding(4, 0, 14, 0),
-        };
-        var matchLabel = new Label
-        {
-            Text = "最低需求匹配度",
-            ForeColor = TextDarkColor,
-            Size = new Size(106, 34),
-            TextAlign = ContentAlignment.MiddleLeft,
-            Margin = Padding.Empty,
-        };
-        _numHeroMatchThreshold = new AntdUI.InputNumber
-        {
-            Size = new Size(76, 34),
-            Minimum = 0,
-            Maximum = 100,
-            Value = 70,
-            Radius = 6,
-            Margin = Padding.Empty,
-        };
-        _numHeroMatchThreshold.ValueChanged += (_, _) =>
-        {
-            SaveSettingsFromControls();
-            UpdateAdvice();
-        };
-        var matchUnit = new Label
-        {
-            Text = "%",
-            ForeColor = TextDarkColor,
-            Size = new Size(26, 34),
-            TextAlign = ContentAlignment.MiddleLeft,
-            Margin = new Padding(4, 0, 0, 0),
-        };
-        automationPanel.Controls.AddRange(new Control[]
-        {
-            disposalLabel, _comboAutoDisposalMethod, maxLabel, _numAutoMaxEquipment,
-            maxUnit, matchLabel, _numHeroMatchThreshold, matchUnit,
-        });
-
-        var legendarySpeedTitle = CreateSettingsHeading(
-            "传说装备赌速度",
-            "仅红装生效；各档为该强化阶段前要求的最低速度。紫装仍用固定严格阶梯 3/6/9/12/12，终局 15。",
-            416);
-        var legendarySpeedPanel = new FlowLayoutPanel
-        {
-            Location = new Point(24, 476),
-            Size = new Size(690, 40),
-            AutoSize = false,
-            WrapContents = false,
-            Margin = Padding.Empty,
-        };
-        _numLegendarySpeedPlus3 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus3);
-        _numLegendarySpeedPlus6 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus6);
-        _numLegendarySpeedPlus9 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus9);
-        _numLegendarySpeedPlus12 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus12);
-        _numLegendarySpeedPlus15 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus15);
-        _numLegendarySpeedFinal = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultFinalPlus15);
-        legendarySpeedPanel.Controls.AddRange(new Control[]
-        {
-            CreateLegendarySpeedLabel("+3前"), _numLegendarySpeedPlus3,
-            CreateLegendarySpeedLabel("+6前"), _numLegendarySpeedPlus6,
-            CreateLegendarySpeedLabel("+9前"), _numLegendarySpeedPlus9,
-            CreateLegendarySpeedLabel("+12前"), _numLegendarySpeedPlus12,
-            CreateLegendarySpeedLabel("+15前"), _numLegendarySpeedPlus15,
-            CreateLegendarySpeedLabel("+15终"), _numLegendarySpeedFinal,
-        });
-
-        _chkHeroicOnlyGambleSpeed = new AntdUI.Checkbox
-        {
-            Text = "紫装只赌速度（忽略分数和匹配度，速度不达标立即处理）",
-            Checked = false,
-            Location = new Point(24, 530),
-            Size = new Size(470, 34),
-        };
-        _chkHeroicOnlyGambleSpeed.CheckedChanged += (_, _) =>
-        {
-            SaveSettingsFromControls();
-            UpdateAdvice();
-        };
-
-        _chkSpeedSetRequiresSpeed = new AntdUI.Checkbox
-        {
-            Text = "速度套只强化带速度的装备（鞋子看主属性，其他部位看副属性）",
-            Checked = true,
-            Location = new Point(24, 566),
-            Size = new Size(520, 34),
-        };
-        _chkSpeedSetRequiresSpeed.CheckedChanged += (_, _) =>
-        {
-            SaveSettingsFromControls();
-            UpdateAdvice();
-        };
-
-        _chkCriticalNecklaceMainStatRule = new AntdUI.Checkbox
-        {
-            Text = "暴击/暴伤高权重子类的项链只强化对应主属性",
-            Checked = true,
-            Location = new Point(24, 602),
-            Size = new Size(520, 34),
-        };
-        _chkCriticalNecklaceMainStatRule.CheckedChanged += (_, _) =>
-        {
-            SaveSettingsFromControls();
-            UpdateAdvice();
-        };
-
-        _chkAutoStopOnValuableEquipment = new AntdUI.Checkbox
-        {
-            Text = "遇到符合保留条件的装备后停止（关闭后将返回背包并继续下一件）",
-            Checked = true,
-            Location = new Point(24, 638),
-            Size = new Size(520, 34),
-        };
-        _chkAutoStopOnValuableEquipment.CheckedChanged += (_, _) => SaveSettingsFromControls();
+        openAutoSettings.Click += (_, _) => ShowAutoEnhanceSettingsWindow();
 
         var rulesTitle = CreateSettingsHeading(
             "自动规则说明",
             "推荐匹配与套装需求数据会自动应用以下规则。",
-            686);
+            440);
         var rulesPanel = new Panel
         {
             BackColor = Color.FromArgb(247, 249, 252),
-            Location = new Point(24, 746),
+            Location = new Point(24, 500),
             Size = new Size(690, 194),
             Padding = new Padding(12, 9, 12, 9),
         };
@@ -361,7 +207,7 @@ public partial class MainForm
             Dock = DockStyle.Fill,
             Font = new Font("Microsoft YaHei UI", 9.2F),
             ForeColor = Color.FromArgb(66, 70, 77),
-            Text = "• 红装赌速度：各档最低速度可在上方自定义，默认 3/3/6/9/12，终局 15。\r\n"
+            Text = "• 红装赌速度：各档最低速度可在自动强化设置中自定义，默认 3/3/6/9/12，终局 15。\r\n"
                    + "• 紫装只赌速度：鞋子除外；开启后忽略分数与匹配度，按严格速度阶梯处理。\r\n"
                    + "• 速度套速度规则：鞋子必须为速度主属性，其他部位必须含速度副属性。\r\n"
                    + "• 暴击项链规则：暴击率或暴伤达到高权重时，项链只接受对应的主属性。\r\n"
@@ -375,22 +221,17 @@ public partial class MainForm
         var reset = new AntdUI.Button
         {
             Text = "恢复默认设置",
-            Location = new Point(24, 966),
+            Location = new Point(24, 720),
             Size = new Size(120, 34),
             Radius = 6,
         };
         reset.Click += (_, _) => ResetSettings();
 
+        card.Size = new Size(720, 800);
         card.Controls.Add(reset);
         card.Controls.Add(rulesPanel);
         card.Controls.Add(rulesTitle);
-        card.Controls.Add(_chkAutoStopOnValuableEquipment);
-        card.Controls.Add(_chkCriticalNecklaceMainStatRule);
-        card.Controls.Add(_chkSpeedSetRequiresSpeed);
-        card.Controls.Add(_chkHeroicOnlyGambleSpeed);
-        card.Controls.Add(legendarySpeedPanel);
-        card.Controls.Add(legendarySpeedTitle);
-        card.Controls.Add(automationPanel);
+        card.Controls.Add(openAutoSettings);
         card.Controls.Add(automationTitle);
         card.Controls.Add(recognitionSettingsPanel);
         card.Controls.Add(recognitionTitle);
@@ -399,29 +240,6 @@ public partial class MainForm
         card.Controls.Add(title);
         _settingsScrollHost.Controls.Add(card);
         return _settingsScrollHost;
-    }
-
-    /// <summary>从自动强化页跳转到软件设置中的自动强化配置区。</summary>
-    private void OpenAutoEnhanceSettings()
-    {
-        if (_mainTabs == null || _settingsTab == null)
-            return;
-
-        _mainTabs.SelectedTab = _settingsTab;
-        BeginInvoke(() =>
-        {
-            if (_settingsScrollHost == null || _autoEnhanceSettingsAnchor == null
-                || _settingsScrollHost.IsDisposed || _autoEnhanceSettingsAnchor.IsDisposed)
-                return;
-
-            _settingsScrollHost.ScrollControlIntoView(_autoEnhanceSettingsAnchor);
-            // ScrollControlIntoView 在部分 DPI/布局下偏弱，再用位置对齐一次。
-            var card = _autoEnhanceSettingsAnchor.Parent;
-            if (card == null)
-                return;
-            var y = Math.Max(0, card.Top + _autoEnhanceSettingsAnchor.Top - ScalePixel(12));
-            _settingsScrollHost.AutoScrollPosition = new Point(0, y);
-        });
     }
 
     private static Label CreateLegendarySpeedLabel(string text)
@@ -660,6 +478,12 @@ public partial class MainForm
     {
         _autoEnhanceCancellation?.Cancel();
         _starForgeCancellation?.Cancel();
+        _autoEnhanceSettingsFormAllowClose = true;
+        _autoLogFormAllowClose = true;
+        if (_autoEnhanceSettingsForm != null && !_autoEnhanceSettingsForm.IsDisposed)
+            _autoEnhanceSettingsForm.Close();
+        if (_autoLogForm != null && !_autoLogForm.IsDisposed)
+            _autoLogForm.Close();
         base.OnFormClosing(e);
     }
 }

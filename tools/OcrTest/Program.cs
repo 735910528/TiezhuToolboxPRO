@@ -445,9 +445,13 @@ if (args.Contains("--ui-smoke"))
                     System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .Invoke(autoOpenSettings, new object[] { EventArgs.Empty });
             Application.DoEvents();
-            if ((int)selectedIndex.GetValue(tabs)! != 4)
-                throw new InvalidOperationException("强化设置入口未跳转到软件设置页");
-            selectedIndex.SetValue(tabs, 1);
+            if ((int)selectedIndex.GetValue(tabs)! != 1)
+                throw new InvalidOperationException("强化设置弹窗不应切换页签");
+            var autoSettingsForm = (Form?)typeof(TiezhuToolbox.MainForm).GetField("_autoEnhanceSettingsForm",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form);
+            if (autoSettingsForm == null || !autoSettingsForm.Visible)
+                throw new InvalidOperationException("强化设置入口未打开设置弹窗");
+            autoSettingsForm.Hide();
             Application.DoEvents();
             if (autoResultGrid.Right < autoResultGrid.Parent!.ClientSize.Width - autoResultGrid.Parent.Padding.Right - 2)
                 throw new InvalidOperationException(
