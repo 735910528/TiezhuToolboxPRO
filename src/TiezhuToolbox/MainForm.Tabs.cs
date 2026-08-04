@@ -47,9 +47,18 @@ public partial class MainForm
         _equipmentTab.Controls.Add(pnlScreenshot);
         _equipmentTab.Controls.Add(topPanel);
         foreach (var control in new Control[]
-                 { comboDevices, txtAddress, btnConnect, btnRefresh, btnOpenFolder, btnToggleShot, btnCaptureRecognize })
+                 {
+                     comboConnectionMode, comboDevices, txtAddress, btnConnect, btnRefresh,
+                     btnOpenFolder, btnToggleShot, btnCaptureRecognize,
+                 })
             control.Anchor = AnchorStyles.Top | AnchorStyles.Left;
         // Select.List 是 AntdUI 提供的不可编辑选择模式：禁止文字输入，但仍可展开下拉。
+        comboConnectionMode.ReadOnly = false;
+        comboConnectionMode.List = true;
+        comboConnectionMode.Items.Clear();
+        comboConnectionMode.Items.Add("ADB");
+        comboConnectionMode.Items.Add("窗口");
+        comboConnectionMode.SelectedIndexChanged += comboConnectionMode_SelectedIndexChanged;
         comboDevices.ReadOnly = false;
         comboDevices.List = true;
         topPanel.Resize += (_, _) => LayoutTopToolbar();
@@ -101,8 +110,11 @@ public partial class MainForm
         PlaceFromRight(btnRefresh, ScalePixel(76), ref right, gap);
         PlaceFromRight(btnConnect, ScalePixel(76), ref right, gap);
         PlaceFromRight(txtAddress, ScalePixel(210), ref right, gap);
-        comboDevices.Location = new Point(margin, ScalePixel(15));
-        comboDevices.Size = new Size(Math.Max(ScalePixel(180), right - margin), ScalePixel(34));
+        comboConnectionMode.Location = new Point(margin, ScalePixel(15));
+        comboConnectionMode.Size = new Size(ScalePixel(88), ScalePixel(34));
+        var devicesLeft = comboConnectionMode.Right + gap;
+        comboDevices.Location = new Point(devicesLeft, ScalePixel(15));
+        comboDevices.Size = new Size(Math.Max(ScalePixel(140), right - devicesLeft), ScalePixel(34));
     }
 
     private void PlaceFromRight(Control control, int width, ref int right, int gap)
@@ -388,7 +400,10 @@ public partial class MainForm
             chkContinuousRecognition.Checked = _settings.ContinuousRecognition;
             numRecognitionInterval.Value = _settings.RecognitionIntervalSeconds;
             continuousRecognitionTimer.Interval = Math.Max(100, (int)(_settings.RecognitionIntervalSeconds * 1000));
-            txtAddress.Text = _settings.AdbAddress;
+            comboConnectionMode.SelectedValue = _settings.ConnectionMode is "窗口" ? "窗口" : "ADB";
+            if (comboConnectionMode.SelectedIndex < 0)
+                comboConnectionMode.SelectedIndex = 0;
+            ApplyConnectionModeUi();
             _numAutoMaxEquipment.Value = _settings.AutoEnhanceMaxEquipment;
             _comboAutoDisposalMethod.SelectedValue = _settings.AutoEnhanceDisposalMethod;
             _numHeroMatchThreshold.Value = _settings.MinimumDemandMatchScore;
@@ -424,7 +439,15 @@ public partial class MainForm
             ?? comboRecognitionHotKey.Text;
         _settings.ContinuousRecognition = chkContinuousRecognition.Checked;
         _settings.RecognitionIntervalSeconds = numRecognitionInterval.Value;
-        _settings.AdbAddress = txtAddress.Text.Trim();
+        _settings.ConnectionMode = IsWindowConnectionMode ? "窗口" : "ADB";
+        if (IsWindowConnectionMode)
+            _settings.WindowTitle = string.IsNullOrWhiteSpace(txtAddress.Text)
+                ? "第七史诗"
+                : txtAddress.Text.Trim();
+        else
+            _settings.AdbAddress = string.IsNullOrWhiteSpace(txtAddress.Text)
+                ? "127.0.0.1:16384"
+                : txtAddress.Text.Trim();
         _settings.AutoEnhanceMaxEquipment = (int)_numAutoMaxEquipment.Value;
         _settings.AutoEnhanceDisposalMethod = _comboAutoDisposalMethod.SelectedValue as string
             ?? _comboAutoDisposalMethod.Text;

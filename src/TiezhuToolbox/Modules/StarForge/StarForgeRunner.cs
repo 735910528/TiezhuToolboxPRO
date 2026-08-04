@@ -1,3 +1,5 @@
+using TiezhuToolbox.Modules.Capture;
+
 namespace TiezhuToolbox.Modules.StarForge;
 
 /// <summary>
@@ -8,19 +10,19 @@ public sealed class StarForgeRunner : IDisposable
     private const double ChangeButtonX = 0.383;
     private const double ChangeButtonY = 0.893;
 
-    private readonly string _serial;
+    private readonly IGameSession _session;
     private readonly IReadOnlyList<StarForgeTarget> _targets;
     private readonly int _maximumChanges;
     private readonly IProgress<StarForgeProgress>? _progress;
     private readonly StarForgeOcrEngine _ocr = new();
 
     public StarForgeRunner(
-        string serial,
+        IGameSession session,
         IReadOnlyList<StarForgeTarget> targets,
         int maximumChanges,
         IProgress<StarForgeProgress>? progress = null)
     {
-        _serial = serial;
+        _session = session ?? throw new ArgumentNullException(nameof(session));
         _targets = targets;
         _maximumChanges = maximumChanges;
         _progress = progress;
@@ -75,7 +77,7 @@ public sealed class StarForgeRunner : IDisposable
             var tapY = Math.Clamp((int)Math.Round(screenHeight * ChangeButtonY), 0, screenHeight - 1);
             Report(changes, $"目标未全部命中，点击变更（{tapX}, {tapY}）");
             statsBeforeLastChange = CreateStatSignature(lastStats);
-            await Task.Run(() => AdbHelper.Tap(_serial, tapX, tapY), cancellationToken);
+            await Task.Run(() => _session.Tap(tapX, tapY), cancellationToken);
             changes++;
 
             // 等待变更动画和文字稳定；下一轮仍会重新确认界面再决定是否点击。
@@ -92,7 +94,7 @@ public sealed class StarForgeRunner : IDisposable
         for (var retry = 0; retry < 4; retry++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            using var screenshot = await Task.Run(() => AdbHelper.ScreenshotPng(_serial), cancellationToken);
+            using var screenshot = await Task.Run(() => _session.Capture(), cancellationToken);
             width = screenshot.Width;
             height = screenshot.Height;
             lastRecognition = await _ocr.RecognizeAsync(screenshot, cancellationToken);

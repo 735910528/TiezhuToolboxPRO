@@ -7,7 +7,7 @@ namespace TiezhuToolbox;
 /// <summary>软件设置。新增字段必须提供兼容旧文件的默认值。</summary>
 public class AppSettings
 {
-    public const int CurrentVersion = 9;
+    public const int CurrentVersion = 10;
 
     public int Version { get; set; } = CurrentVersion;
     public decimal LeftThreshold { get; set; } = 24;
@@ -16,7 +16,11 @@ public class AppSettings
     public string RecognitionHotKey { get; set; } = "F2";
     public bool ContinuousRecognition { get; set; }
     public decimal RecognitionIntervalSeconds { get; set; } = 0.1M;
+    /// <summary>连接方式：ADB（模拟器调试桥）或 窗口（PC/模拟器窗口截图）。</summary>
+    public string ConnectionMode { get; set; } = "ADB";
     public string AdbAddress { get; set; } = "127.0.0.1:16384";
+    /// <summary>窗口模式的标题关键字，默认匹配「第七史诗」。</summary>
+    public string WindowTitle { get; set; } = "第七史诗";
     public int AutoEnhanceMaxEquipment { get; set; } = 50;
     public string AutoEnhanceDisposalMethod { get; set; } = "出售";
     // 保留旧 JSON 字段名，兼容已经保存的 settings.json。
@@ -49,8 +53,12 @@ public class AppSettings
             AutoEnhanceDisposalMethod = "出售";
         if (!Enum.TryParse<Keys>(RecognitionHotKey, out var key) || key is < Keys.F1 or > Keys.F12)
             RecognitionHotKey = "F2";
+        if (ConnectionMode is not ("ADB" or "窗口"))
+            ConnectionMode = "ADB";
         if (string.IsNullOrWhiteSpace(AdbAddress))
             AdbAddress = "127.0.0.1:16384";
+        if (string.IsNullOrWhiteSpace(WindowTitle))
+            WindowTitle = "第七史诗";
         DisabledDemandProfiles ??= new List<string>();
         DisabledDemandProfiles = DisabledDemandProfiles
             .Where(key => !string.IsNullOrWhiteSpace(key))

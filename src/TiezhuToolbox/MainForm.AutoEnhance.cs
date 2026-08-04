@@ -75,7 +75,7 @@ public partial class MainForm
 
         _lblAutoDevice = new Label
         {
-            Text = "设备：跟随顶部设备选择",
+            Text = "目标：跟随顶部 ADB/窗口选择",
             ForeColor = TextDarkColor,
             Location = new Point(24, 123),
             Size = new Size(300, 34),
@@ -208,10 +208,9 @@ public partial class MainForm
         if (IsAutomationRunning)
             return;
 
-        var deviceIndex = comboDevices.SelectedIndex;
-        if (deviceIndex < 0 || deviceIndex >= _devices.Count)
+        if (!TryCreateGameSession(out var session, out var sessionError))
         {
-            AppendAutoLog(AutoEnhancementLogLevel.Error, "请先在“装备强化”页选择一个已连接的 ADB 设备");
+            AppendAutoLog(AutoEnhancementLogLevel.Error, sessionError);
             return;
         }
 
@@ -232,7 +231,6 @@ public partial class MainForm
         if (confirmation != DialogResult.Yes)
             return;
 
-        var device = _devices[deviceIndex];
         _autoEnhanceCancellation = new CancellationTokenSource();
         var cancellationToken = _autoEnhanceCancellation.Token;
         _btnAutoStart.Enabled = false;
@@ -245,7 +243,7 @@ public partial class MainForm
         _chkHeroicOnlyGambleSpeed.Enabled = false;
         _chkSpeedSetRequiresSpeed.Enabled = false;
         _chkCriticalNecklaceMainStatRule.Enabled = false;
-        _lblAutoDevice.Text = $"设备：{device.Serial}";
+        _lblAutoDevice.Text = $"目标：{session.DisplayName}";
         _lblAutoState.Text = "运行中";
         _lblAutoState.ForeColor = AdviceContinueColor;
         ApplyRecognitionAvailability(showHotKeySuccess: false);
@@ -272,7 +270,7 @@ public partial class MainForm
 
         try
         {
-            runner = new AutoEnhancementRunner(device.Serial, templateDir, options, progress);
+            runner = new AutoEnhancementRunner(session, templateDir, options, progress);
             var result = await runner.RunAsync(cancellationToken);
             _lblAutoStats.Text = $"已处理 {result.Processed} · 强化装备 {result.Enhanced} · 出售 {result.Sold} · 分解 {result.Extracted}";
             _lblAutoState.Text = result.StoppedForValuableEquipment ? "已安全停止" : "已完成";

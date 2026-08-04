@@ -1,3 +1,4 @@
+using TiezhuToolbox.Modules.Capture;
 using TiezhuToolbox.Modules.Ocr;
 using TiezhuToolbox.Modules.Recommend;
 
@@ -97,12 +98,12 @@ public sealed record AutoEnhancementResult(
 }
 
 /// <summary>
-/// 自动强化闭环：图片确认界面与按钮 → OCR 判断 → 单次 ADB 点击 → 再截图确认。
+/// 自动强化闭环：图片确认界面与按钮 → OCR 判断 → 单次点击 → 再截图确认。
 /// 任一界面、按钮或 OCR 结果不确定都会抛错停机，绝不按固定坐标继续盲点。
 /// </summary>
 public sealed class AutoEnhancementRunner : IDisposable
 {
-    private readonly string _serial;
+    private readonly IGameSession _session;
     private readonly AutoEnhancementOptions _options;
     private readonly IProgress<AutoEnhancementProgress>? _progress;
     private readonly AutomationScreenMatcher _matcher = new();
@@ -115,12 +116,12 @@ public sealed class AutoEnhancementRunner : IDisposable
     private readonly List<ReforgeEquipmentSummary> _reforgeEquipment = new();
 
     public AutoEnhancementRunner(
-        string serial,
+        IGameSession session,
         string ocrTemplateDirectory,
         AutoEnhancementOptions options,
         IProgress<AutoEnhancementProgress>? progress = null)
     {
-        _serial = serial;
+        _session = session ?? throw new ArgumentNullException(nameof(session));
         _options = options;
         _progress = progress;
         _ocrEngine = new OcrEngine(ocrTemplateDirectory);
@@ -129,7 +130,7 @@ public sealed class AutoEnhancementRunner : IDisposable
     public async Task<AutoEnhancementResult> RunAsync(CancellationToken cancellationToken)
     {
         Report(AutoEnhancementLogLevel.Info,
-            $"自动强化已启动，设备 {_serial}，本次最多处理 {_options.MaxEquipment} 件装备，" +
+            $"自动强化已启动，目标 {_session.DisplayName}，本次最多处理 {_options.MaxEquipment} 件装备，" +
             $"淘汰装备处理方式：{DisposalDisplayName}，紫装规则：{(_options.HeroicOnlyGambleSpeed ? "只赌速度" : "按常规评分")}，" +
             $"速度套速度规则：{(_options.SpeedSetRequiresSpeed ? "开启" : "关闭")}，暴击项链规则：{(_options.CriticalNecklaceMainStatRule ? "开启" : "关闭")}，" +
             $"符合保留条件后：{(_options.StopOnValuableEquipment ? "停止" : "返回背包继续")}");
@@ -330,8 +331,8 @@ public sealed class AutoEnhancementRunner : IDisposable
     private async Task ReturnToBackpackAndSelectFirstEquipmentAsync(CancellationToken cancellationToken)
     {
         Report(AutoEnhancementLogLevel.Action,
-            "当前装备符合保留条件，设置为继续运行：发送安卓返回键");
-        await Task.Run(() => AdbHelper.PressBack(_serial), cancellationToken);
+            "当前装备符合保留条件，设置为继续运行：发送返回（ADB Back / 窗口 Esc）");
+        await Task.Run(() => _session.PressBack(), cancellationToken);
 
         using var backpack = await WaitForScreenAsync(
             AutomationGameScreen.Backpack, _options.UiTimeout, cancellationToken);
@@ -339,7 +340,7 @@ public sealed class AutoEnhancementRunner : IDisposable
         var y = (int)Math.Round(backpack.Height * 130D / AutomationScreenMatcher.ReferenceHeight);
         Report(AutoEnhancementLogLevel.Action,
             $"已确认返回背包，点击左上角第一件装备 ({x}, {y})");
-        await Task.Run(() => AdbHelper.Tap(_serial, x, y), cancellationToken);
+        await Task.Run(() => _session.Tap(x, y), cancellationToken);
         await Task.Delay(350, cancellationToken);
 
         using var selected = await CaptureAsync(cancellationToken);
@@ -366,7 +367,7 @@ public sealed class AutoEnhancementRunner : IDisposable
 
         Report(AutoEnhancementLogLevel.Action,
             $"图片确认 {displayName}（{match.Confidence:P1}），点击 ({match.Center.X}, {match.Center.Y})");
-        await Task.Run(() => AdbHelper.Tap(_serial, match.Center.X, match.Center.Y), cancellationToken);
+        await Task.Run(() => _session.Tap(match.Center.X, match.Center.Y), cancellationToken);
     }
 
     private async Task<Bitmap> WaitForScreenAsync(
@@ -459,7 +460,7 @@ public sealed class AutoEnhancementRunner : IDisposable
     }
 
     private async Task<Bitmap> CaptureAsync(CancellationToken cancellationToken)
-        => await Task.Run(() => AdbHelper.ScreenshotPng(_serial), cancellationToken);
+        => await Task.Run(() => _session.Capture(), cancellationToken);
 
     private AutoEnhancementResult FinishForValuableEquipment(string message)
     {

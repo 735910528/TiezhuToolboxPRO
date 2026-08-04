@@ -321,6 +321,11 @@ if (args.Contains("--ui-smoke"))
                 form.DrawToBitmap(bitmap, form.ClientRectangle);
                 bitmap.Save(Path.Combine(directory, name + ".png"));
             }
+            var modeSelect = typeof(TiezhuToolbox.MainForm).GetField("comboConnectionMode",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            var modeItems = modeSelect.GetType().GetProperty("Items")!.GetValue(modeSelect) as System.Collections.ICollection;
+            if (modeItems == null || modeItems.Count < 2)
+                throw new InvalidOperationException("连接方式下拉未包含 ADB/窗口 选项");
             var deviceSelect = typeof(TiezhuToolbox.MainForm).GetField("comboDevices",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             var deviceReadOnly = (bool)deviceSelect.GetType().GetProperty("ReadOnly")!.GetValue(deviceSelect)!;
@@ -329,13 +334,41 @@ if (args.Contains("--ui-smoke"))
             var deviceListMode = (bool)deviceSelect.GetType().GetProperty("List")!.GetValue(deviceSelect)!;
             if (!deviceListMode)
                 throw new InvalidOperationException("设备下拉框仍允许文字输入");
+            // 连接方式下拉若仍展开，会挡住目标下拉的 ExpandDrop。
+            var modeExpand = modeSelect.GetType().GetProperty("ExpandDrop")!;
+            modeExpand.SetValue(modeSelect, false);
+            Application.DoEvents();
+            ((Control)deviceSelect).Focus();
+            Application.DoEvents();
             var expandDrop = deviceSelect.GetType().GetProperty("ExpandDrop")!;
-            expandDrop.SetValue(deviceSelect, true);
-            Application.DoEvents();
-            if (!(bool)expandDrop.GetValue(deviceSelect)!)
-                throw new InvalidOperationException("设备下拉框无法展开");
-            expandDrop.SetValue(deviceSelect, false);
-            Application.DoEvents();
+            // AntdUI Select 在 Items 为空时 ExpandDrop 会保持 false；冒烟时塞一条临时项再测展开。
+            var deviceItems = deviceSelect.GetType().GetProperty("Items")!.GetValue(deviceSelect)
+                as System.Collections.IList
+                ?? throw new InvalidOperationException("设备下拉 Items 不可用");
+            var addedProbeItem = false;
+            if (deviceItems.Count == 0)
+            {
+                deviceItems.Add("__ui_smoke_probe__");
+                addedProbeItem = true;
+                Application.DoEvents();
+            }
+            try
+            {
+                expandDrop.SetValue(deviceSelect, true);
+                Application.DoEvents();
+                if (!(bool)expandDrop.GetValue(deviceSelect)!)
+                    throw new InvalidOperationException("设备下拉框无法展开");
+                expandDrop.SetValue(deviceSelect, false);
+                Application.DoEvents();
+            }
+            finally
+            {
+                if (addedProbeItem)
+                {
+                    deviceItems.Remove("__ui_smoke_probe__");
+                    Application.DoEvents();
+                }
+            }
             var addressInput = (Control)typeof(TiezhuToolbox.MainForm).GetField("txtAddress",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             if (addressInput.Width < DpiPixel(200))

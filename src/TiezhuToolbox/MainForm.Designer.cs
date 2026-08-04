@@ -6,6 +6,7 @@ partial class MainForm
 
     private Panel topPanel;
     private Panel topBorder;
+    private AntdUI.Select comboConnectionMode;
     private AntdUI.Select comboDevices;
     private AntdUI.Input txtAddress;
     private AntdUI.Button btnConnect;
@@ -85,6 +86,7 @@ partial class MainForm
         this.components = new System.ComponentModel.Container();
         this.topPanel = new Panel();
         this.topBorder = new Panel();
+        this.comboConnectionMode = new AntdUI.Select();
         this.comboDevices = new AntdUI.Select();
         this.txtAddress = new AntdUI.Input();
         this.btnConnect = new AntdUI.Button();
@@ -161,6 +163,7 @@ partial class MainForm
         // topPanel
         //
         this.topPanel.BackColor = Color.White;
+        this.topPanel.Controls.Add(this.comboConnectionMode);
         this.topPanel.Controls.Add(this.comboDevices);
         this.topPanel.Controls.Add(this.txtAddress);
         this.topPanel.Controls.Add(this.btnConnect);
@@ -184,14 +187,23 @@ partial class MainForm
         this.topBorder.Size = new Size(1000, 1);
         this.topBorder.TabIndex = 7;
         //
+        // comboConnectionMode
+        //
+        this.comboConnectionMode.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+        this.comboConnectionMode.Location = new Point(12, 15);
+        this.comboConnectionMode.Name = "comboConnectionMode";
+        this.comboConnectionMode.Radius = 6;
+        this.comboConnectionMode.Size = new Size(88, 34);
+        this.comboConnectionMode.TabIndex = 0;
+        //
         // comboDevices
         //
         this.comboDevices.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-        this.comboDevices.Location = new Point(12, 15);
+        this.comboDevices.Location = new Point(108, 15);
         this.comboDevices.Name = "comboDevices";
         this.comboDevices.Radius = 6;
-        this.comboDevices.Size = new Size(348, 34);
-        this.comboDevices.TabIndex = 0;
+        this.comboDevices.Size = new Size(252, 34);
+        this.comboDevices.TabIndex = 1;
         //
         // txtAddress
         //
@@ -200,7 +212,7 @@ partial class MainForm
         this.txtAddress.Name = "txtAddress";
         this.txtAddress.Radius = 6;
         this.txtAddress.Size = new Size(148, 34);
-        this.txtAddress.TabIndex = 1;
+        this.txtAddress.TabIndex = 2;
         this.txtAddress.Text = "127.0.0.1:16384";
         //
         // btnConnect
@@ -213,7 +225,7 @@ partial class MainForm
         this.btnConnect.Name = "btnConnect";
         this.btnConnect.Radius = 6;
         this.btnConnect.Size = new Size(76, 34);
-        this.btnConnect.TabIndex = 2;
+        this.btnConnect.TabIndex = 3;
         this.btnConnect.Text = "连接";
         this.btnConnect.Click += new EventHandler(this.btnConnect_Click);
         //

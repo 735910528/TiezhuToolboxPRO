@@ -169,7 +169,7 @@ public partial class MainForm
         };
         _lblStarForgeDevice = new Label
         {
-            Text = "设备：跟随装备强化页的设备选择",
+            Text = "目标：跟随顶部 ADB/窗口选择",
             ForeColor = TextDarkColor,
             Location = new Point(494, 185),
             Size = new Size(360, 32),
@@ -289,10 +289,9 @@ public partial class MainForm
         if (IsAutomationRunning)
             return;
 
-        var deviceIndex = comboDevices.SelectedIndex;
-        if (deviceIndex < 0 || deviceIndex >= _devices.Count)
+        if (!TryCreateGameSession(out var session, out var sessionError))
         {
-            UpdateStatus("请先在装备强化页选择一个 ADB 设备");
+            UpdateStatus(sessionError);
             return;
         }
 
@@ -329,13 +328,12 @@ public partial class MainForm
             return;
 
         SaveSettingsFromControls();
-        var device = _devices[deviceIndex];
         _starForgeCancellation = new CancellationTokenSource();
         var cancellationToken = _starForgeCancellation.Token;
         SetStarForgeControlsEnabled(false);
         _btnStarForgeStop.Enabled = true;
         _btnAutoStart.Enabled = false;
-        _lblStarForgeDevice.Text = $"设备：{device.Serial}";
+        _lblStarForgeDevice.Text = $"目标：{session.DisplayName}";
         _lblStarForgeState.Text = "运行中";
         _lblStarForgeState.ForeColor = AdviceContinueColor;
         _starForgeLog.Clear();
@@ -350,7 +348,7 @@ public partial class MainForm
         try
         {
             using var runner = new StarForgeRunner(
-                device.Serial, targets, (int)_numStarForgeMaximumChanges.Value, progress);
+                session, targets, (int)_numStarForgeMaximumChanges.Value, progress);
             var result = await runner.RunAsync(cancellationToken);
             _lblStarForgeStats.Text = $"已变更 {result.Changes} 次";
             _lblStarForgeState.Text = result.Status == StarForgeRunStatus.Matched ? "已命中并停止" : "已达到上限";

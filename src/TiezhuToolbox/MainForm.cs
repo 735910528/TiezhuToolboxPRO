@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using TiezhuToolbox.Modules.Capture;
 
 namespace TiezhuToolbox;
 
@@ -28,8 +29,9 @@ public partial class MainForm : Form
     private bool _isUpdatingHotKeySelection;
     private int _layoutDpi = 96;
     private Icon? _applicationIcon;
-    // AntdUI.Select 不支持 DataSource 绑定，设备列表单独保存，SelectedIndex 对应下标。
+    // AntdUI.Select 不支持 DataSource 绑定，目标列表单独保存，SelectedIndex 对应下标。
     private List<AdbDeviceInfo> _devices = new();
+    private List<GameWindowInfo> _windows = new();
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -55,12 +57,30 @@ public partial class MainForm : Form
 
     private void MainForm_Load(object sender, EventArgs e)
     {
-        RefreshDeviceList();
+        RefreshTargetList();
         ApplyRecognitionAvailability(showHotKeySuccess: false);
+    }
+
+    private bool IsWindowConnectionMode
+    {
+        get
+        {
+            var mode = comboConnectionMode.SelectedValue as string ?? comboConnectionMode.Text;
+            return string.Equals(mode, "窗口", StringComparison.Ordinal);
+        }
+    }
+
+    private void RefreshTargetList()
+    {
+        if (IsWindowConnectionMode)
+            RefreshWindowList();
+        else
+            RefreshDeviceList();
     }
 
     private void RefreshDeviceList()
     {
+        _windows = new List<GameWindowInfo>();
         if (AdbHelper.FindAdbPath() == null)
         {
             _devices = new List<AdbDeviceInfo>();
@@ -81,22 +101,65 @@ public partial class MainForm : Form
                 comboDevices.SelectedIndex = 0;
 
             UpdateStatus(devices.Count > 0
-                ? $"已加载 {devices.Count} 个设备"
+                ? $"已加载 {devices.Count} 个 ADB 设备"
                 : "未发现设备，请确认模拟器已开启 ADB 调试（MuMu：设置中心→其他→ADB 调试），或输入地址后点击连接");
         }
         catch (Exception ex)
         {
+            _devices = new List<AdbDeviceInfo>();
+            comboDevices.Items.Clear();
             UpdateStatus($"获取设备列表失败：{ex.Message}");
+        }
+    }
+
+    private void RefreshWindowList()
+    {
+        _devices = new List<AdbDeviceInfo>();
+        try
+        {
+            var filter = txtAddress.Text.Trim();
+            var windows = GameWindowHelper.ListVisibleWindows(
+                string.IsNullOrEmpty(filter) ? null : filter);
+            // 无过滤结果时回退为全部可见窗口，方便用户手动挑选 PC/模拟器窗口。
+            if (windows.Count == 0 && !string.IsNullOrEmpty(filter))
+                windows = GameWindowHelper.ListVisibleWindows();
+
+            _windows = windows;
+            comboDevices.Items.Clear();
+            foreach (var window in windows)
+                comboDevices.Items.Add(window.ToString());
+
+            if (comboDevices.Items.Count > 0)
+            {
+                var preferred = string.IsNullOrEmpty(filter) ? "第七史诗" : filter;
+                var preferredIndex = windows.FindIndex(w =>
+                    w.Title.IndexOf(preferred, StringComparison.OrdinalIgnoreCase) >= 0);
+                comboDevices.SelectedIndex = preferredIndex >= 0 ? preferredIndex : 0;
+            }
+
+            UpdateStatus(windows.Count > 0
+                ? $"已加载 {windows.Count} 个窗口（关键字：{(string.IsNullOrEmpty(filter) ? "全部" : filter)}）"
+                : "未发现可见窗口，请先启动游戏或模拟器");
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus($"获取窗口列表失败：{ex.Message}");
         }
     }
 
     private void btnRefresh_Click(object sender, EventArgs e)
     {
-        RefreshDeviceList();
+        RefreshTargetList();
     }
 
     private void btnConnect_Click(object sender, EventArgs e)
     {
+        if (IsWindowConnectionMode)
+        {
+            ConnectSelectedWindow();
+            return;
+        }
+
         var address = txtAddress.Text.Trim();
         if (string.IsNullOrEmpty(address))
         {
@@ -127,6 +190,117 @@ public partial class MainForm : Form
         RefreshDeviceList();
     }
 
+    private void ConnectSelectedWindow()
+    {
+        SaveSettingsFromControls();
+        var index = comboDevices.SelectedIndex;
+        GameWindowInfo window;
+        if (index >= 0 && index < _windows.Count)
+        {
+            window = _windows[index];
+        }
+        else
+        {
+            var found = GameWindowHelper.FindGameWindow(txtAddress.Text.Trim());
+            if (found == null)
+            {
+                UpdateStatus("未找到游戏窗口。请确认 PC/模拟器窗口标题包含「第七史诗」，或先点刷新再选择");
+                return;
+            }
+
+            window = found.Value;
+            RefreshWindowList();
+            var matchIndex = _windows.FindIndex(w => w.Handle == window.Handle);
+            if (matchIndex >= 0)
+                comboDevices.SelectedIndex = matchIndex;
+        }
+
+        try
+        {
+            GameWindowHelper.FocusWindow(window.Handle);
+            var (_, _, width, height) = GameWindowHelper.ResolveCaptureRegion(window.Handle);
+            UpdateStatus($"已选用窗口：{window.Title}（画面 {width}×{height}）");
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus($"选用窗口失败：{ex.Message}");
+        }
+    }
+
+    private bool TryCreateGameSession(out IGameSession session, out string error)
+    {
+        if (IsWindowConnectionMode)
+        {
+            var index = comboDevices.SelectedIndex;
+            if (index < 0 || index >= _windows.Count)
+            {
+                session = null!;
+                error = "请先选择一个游戏窗口（顶部切换到“窗口”，刷新后选择）";
+                return false;
+            }
+
+            session = WindowGameSession.FromWindow(_windows[index]);
+            error = string.Empty;
+            return true;
+        }
+
+        var deviceIndex = comboDevices.SelectedIndex;
+        if (deviceIndex < 0 || deviceIndex >= _devices.Count)
+        {
+            session = null!;
+            error = "请先选择一个 ADB 设备";
+            return false;
+        }
+
+        session = new AdbGameSession(_devices[deviceIndex].Serial);
+        error = string.Empty;
+        return true;
+    }
+
+    private void comboConnectionMode_SelectedIndexChanged(object sender, AntdUI.IntEventArgs e)
+    {
+        if (_isLoadingSettings)
+            return;
+
+        // 下拉已切到新模式，输入框里仍是旧模式内容，先写回对应设置。
+        if (IsWindowConnectionMode)
+            _settings.AdbAddress = string.IsNullOrWhiteSpace(txtAddress.Text)
+                ? "127.0.0.1:16384"
+                : txtAddress.Text.Trim();
+        else
+            _settings.WindowTitle = string.IsNullOrWhiteSpace(txtAddress.Text)
+                ? "第七史诗"
+                : txtAddress.Text.Trim();
+
+        ApplyConnectionModeUi();
+        SaveSettingsFromControls();
+        RefreshTargetList();
+    }
+
+    private void ApplyConnectionModeUi()
+    {
+        if (IsWindowConnectionMode)
+        {
+            txtAddress.Text = string.IsNullOrWhiteSpace(_settings.WindowTitle)
+                ? "第七史诗"
+                : _settings.WindowTitle;
+            toolTip.SetToolTip(txtAddress, "窗口标题关键字（如 第七史诗），用于过滤窗口列表");
+            toolTip.SetToolTip(comboDevices, "选择 PC 客户端或模拟器游戏窗口");
+            toolTip.SetToolTip(btnConnect, "聚焦并确认所选窗口");
+            btnConnect.Text = "选用";
+        }
+        else
+        {
+            txtAddress.Text = string.IsNullOrWhiteSpace(_settings.AdbAddress)
+                ? "127.0.0.1:16384"
+                : _settings.AdbAddress;
+            toolTip.SetToolTip(txtAddress, "模拟器 ADB 地址，例如 MuMu 12 默认 127.0.0.1:16384");
+            toolTip.SetToolTip(comboDevices, "已连接的 ADB 设备");
+            toolTip.SetToolTip(btnConnect, "adb connect 到输入的地址");
+            btnConnect.Text = "连接";
+        }
+    }
+
     /// <summary>
     /// 截图 + 识别一步完成：截取当前设备画面并保存，随后 OCR 识别并刷新装备信息与角色推荐。
     /// </summary>
@@ -140,17 +314,14 @@ public partial class MainForm : Form
         if (_isRecognizing)
             return;
 
-        var deviceIndex = comboDevices.SelectedIndex;
-        if (deviceIndex < 0 || deviceIndex >= _devices.Count)
+        if (!TryCreateGameSession(out var session, out var sessionError))
         {
             if (chkContinuousRecognition.Checked)
                 chkContinuousRecognition.Checked = false;
 
-            UpdateStatus("请先选择一个设备");
+            UpdateStatus(sessionError);
             return;
         }
-
-        var device = _devices[deviceIndex];
 
         _isRecognizing = true;
         var isContinuous = chkContinuousRecognition.Checked;
@@ -163,9 +334,10 @@ public partial class MainForm : Form
             if (!isContinuous)
                 UpdateStatus("正在截图...");
 
-            capturedBitmap = await Task.Run(() => AdbHelper.ScreenshotPng(device.Serial));
+            capturedBitmap = await Task.Run(() => session.Capture());
 
-            var baseName = "adb_" + string.Join("_", device.Serial.Split(Path.GetInvalidFileNameChars()));
+            var prefix = IsWindowConnectionMode ? "win_" : "adb_";
+            var baseName = prefix + string.Join("_", session.DisplayName.Split(Path.GetInvalidFileNameChars()));
             _lastScreenshotPath = ScreenshotHelper.SaveBitmap(capturedBitmap, baseName);
 
             if (!isContinuous)
