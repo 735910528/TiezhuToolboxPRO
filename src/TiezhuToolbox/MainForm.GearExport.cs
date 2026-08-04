@@ -11,10 +11,15 @@ public partial class MainForm
     private AntdUI.Button _btnGearExportFile = null!;
     private AntdUI.Button _btnBailiAnalyze = null!;
     private AntdUI.Button _btnBailiAnalyzeFile = null!;
+    private AntdUI.Button _btnBailiCopyFileId = null!;
+    private AntdUI.Button _btnBailiSaveImage = null!;
     private Label _lblGearExportState = null!;
+    private Label _lblBailiFileId = null!;
     private RichTextBox _txtGearExportStatus = null!;
+    private PictureBox _picBailiResult = null!;
     private GearPacketScanner? _gearScanner;
     private GearTxtDocument? _gearExportDocument;
+    private BailiGearStatResult? _bailiLastResult;
     private bool _gearExportBusy;
 
     private Control CreateGearExportContent()
@@ -51,7 +56,7 @@ public partial class MainForm
         };
         var hint = new Label
         {
-            Text = "流程：安装 Python3 + Npcap → 关闭游戏后开始扫描 → 进大厅 → 停止并解包 → 导出 gear.txt / 百里战力分析。",
+            Text = "流程：安装 Python3 + Npcap → 关闭游戏后开始扫描 → 进大厅 → 停止并解包 → 自动上传百里并在本页显示战力图。",
             ForeColor = Color.FromArgb(95, 99, 104),
             Location = new Point(24, 90),
             Size = new Size(900, 28),
@@ -113,7 +118,7 @@ public partial class MainForm
             Text = "状态：未开始",
             ForeColor = TextDarkColor,
             Location = new Point(24, 200),
-            Size = new Size(520, 32),
+            Size = new Size(720, 32),
             TextAlign = ContentAlignment.MiddleLeft,
         };
 
@@ -155,9 +160,9 @@ public partial class MainForm
 
         _btnBailiAnalyze = new AntdUI.Button
         {
-            Text = "百里战力分析",
+            Text = "重新分析",
             Location = new Point(432, 240),
-            Size = new Size(140, 36),
+            Size = new Size(120, 36),
             Radius = 6,
             Enabled = false,
             Type = AntdUI.TTypeMini.Primary,
@@ -167,7 +172,7 @@ public partial class MainForm
         _btnBailiAnalyzeFile = new AntdUI.Button
         {
             Text = "选文件分析",
-            Location = new Point(584, 240),
+            Location = new Point(564, 240),
             Size = new Size(120, 36),
             Radius = 6,
             BorderWidth = 1,
@@ -179,8 +184,8 @@ public partial class MainForm
         _txtGearExportStatus = new RichTextBox
         {
             Location = new Point(24, 292),
-            Size = new Size(900, 320),
-            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            Size = new Size(360, 360),
+            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left,
             ReadOnly = true,
             BackColor = Color.FromArgb(248, 249, 250),
             ForeColor = TextDarkColor,
@@ -189,18 +194,61 @@ public partial class MainForm
             DetectUrls = false,
         };
         AppendGearExportStatus(
-            "准备就绪。需本机 Python 与 Npcap（Scapy 已随程序附带）。解包后可导出或直接上传百里分析战力。");
+            "准备就绪。停止并解包成功后，会自动上传百里并在右侧显示战力分析图。");
 
-        card.Resize += (_, _) =>
+        var resultHeader = new Panel
         {
-            warning.Width = Math.Max(ScalePixel(300), card.ClientSize.Width - ScalePixel(48));
-            hint.Width = warning.Width;
-            pathTip.Width = warning.Width;
-            _txtGearExportStatus.Width = Math.Max(ScalePixel(300), card.ClientSize.Width - ScalePixel(48));
-            _txtGearExportStatus.Height = Math.Max(
-                ScalePixel(160),
-                card.ClientSize.Height - _txtGearExportStatus.Top - ScalePixel(24));
+            Location = new Point(400, 292),
+            Size = new Size(520, 40),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            BackColor = Color.FromArgb(248, 249, 250),
         };
+        _lblBailiFileId = new Label
+        {
+            Text = "战力结果：尚未分析",
+            AutoSize = false,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(8, 0, 0, 0),
+            Font = new Font("Microsoft YaHei UI", 9.25F),
+        };
+        _btnBailiCopyFileId = new AntdUI.Button
+        {
+            Text = "复制 fileId",
+            Dock = DockStyle.Right,
+            Width = 110,
+            Radius = 6,
+            Enabled = false,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+        };
+        _btnBailiCopyFileId.Click += (_, _) => CopyBailiFileId();
+        _btnBailiSaveImage = new AntdUI.Button
+        {
+            Text = "保存图片",
+            Dock = DockStyle.Right,
+            Width = 100,
+            Radius = 6,
+            Enabled = false,
+            Type = AntdUI.TTypeMini.Primary,
+        };
+        _btnBailiSaveImage.Click += (_, _) => SaveBailiResultImage();
+        resultHeader.Controls.Add(_lblBailiFileId);
+        resultHeader.Controls.Add(_btnBailiCopyFileId);
+        resultHeader.Controls.Add(_btnBailiSaveImage);
+
+        _picBailiResult = new PictureBox
+        {
+            Location = new Point(400, 338),
+            Size = new Size(520, 314),
+            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            SizeMode = PictureBoxSizeMode.Zoom,
+            BackColor = Color.FromArgb(32, 33, 36),
+            BorderStyle = BorderStyle.FixedSingle,
+        };
+
+        card.Resize += (_, _) => LayoutGearExportContent(card, warning, hint, pathTip, resultHeader);
 
         card.Controls.AddRange(new Control[]
         {
@@ -208,10 +256,43 @@ public partial class MainForm
             btnOpenPythonDownload, btnOpenNpcapDownload, btnOpenBailiSite,
             _lblGearExportState,
             _btnGearScanStart, _btnGearScanStop, _btnGearExportFile,
-            _btnBailiAnalyze, _btnBailiAnalyzeFile, _txtGearExportStatus,
+            _btnBailiAnalyze, _btnBailiAnalyzeFile,
+            _txtGearExportStatus, resultHeader, _picBailiResult,
         });
         host.Controls.Add(card);
         return host;
+    }
+
+    private void LayoutGearExportContent(
+        Panel card,
+        Label warning,
+        Label hint,
+        Label pathTip,
+        Panel resultHeader)
+    {
+        var contentWidth = Math.Max(ScalePixel(300), card.ClientSize.Width - ScalePixel(48));
+        warning.Width = contentWidth;
+        hint.Width = contentWidth;
+        pathTip.Width = contentWidth;
+        _lblGearExportState.Width = contentWidth;
+
+        var gap = ScalePixel(16);
+        var leftWidth = Math.Max(ScalePixel(260), contentWidth * 38 / 100);
+        var rightWidth = Math.Max(ScalePixel(220), contentWidth - leftWidth - gap);
+        var bottomHeight = Math.Max(
+            ScalePixel(180),
+            card.ClientSize.Height - _txtGearExportStatus.Top - ScalePixel(24));
+
+        _txtGearExportStatus.Width = leftWidth;
+        _txtGearExportStatus.Height = bottomHeight;
+
+        resultHeader.Location = new Point(_txtGearExportStatus.Left + leftWidth + gap, _txtGearExportStatus.Top);
+        resultHeader.Width = rightWidth;
+        resultHeader.Height = ScalePixel(40);
+
+        _picBailiResult.Location = new Point(resultHeader.Left, resultHeader.Bottom + ScalePixel(6));
+        _picBailiResult.Width = rightWidth;
+        _picBailiResult.Height = Math.Max(ScalePixel(120), bottomHeight - resultHeader.Height - ScalePixel(6));
     }
 
     private void OpenGearExportDownloadUrl(string url, string name)
@@ -254,6 +335,88 @@ public partial class MainForm
         _btnGearExportFile.Enabled = canExport && !scanning && !_gearExportBusy;
         _btnBailiAnalyze.Enabled = canExport && !scanning && !_gearExportBusy;
         _btnBailiAnalyzeFile.Enabled = !scanning && !_gearExportBusy;
+        var hasResult = _bailiLastResult != null;
+        _btnBailiCopyFileId.Enabled = hasResult && !scanning && !_gearExportBusy;
+        _btnBailiSaveImage.Enabled = hasResult && !scanning && !_gearExportBusy;
+    }
+
+    private void ClearBailiResultOnPage()
+    {
+        _bailiLastResult = null;
+        var old = _picBailiResult.Image;
+        _picBailiResult.Image = null;
+        old?.Dispose();
+        _lblBailiFileId.Text = "战力结果：尚未分析";
+        _btnBailiCopyFileId.Enabled = false;
+        _btnBailiSaveImage.Enabled = false;
+    }
+
+    private void ShowBailiResultOnPage(BailiGearStatResult result)
+    {
+        Image? image;
+        try
+        {
+            using var ms = new MemoryStream(result.ImageBytes, writable: false);
+            // Clone so the stream can be disposed safely.
+            using var temp = Image.FromStream(ms);
+            image = new Bitmap(temp);
+        }
+        catch (Exception ex)
+        {
+            AppendGearExportStatus("分析图解析失败：" + ex.Message);
+            return;
+        }
+
+        var old = _picBailiResult.Image;
+        _picBailiResult.Image = image;
+        old?.Dispose();
+        _bailiLastResult = result;
+        _lblBailiFileId.Text = "fileId：" + result.FileId;
+        _btnBailiCopyFileId.Enabled = !_gearExportBusy;
+        _btnBailiSaveImage.Enabled = !_gearExportBusy;
+    }
+
+    private void CopyBailiFileId()
+    {
+        if (_bailiLastResult == null)
+            return;
+        try
+        {
+            Clipboard.SetText(_bailiLastResult.FileId);
+            AppendGearExportStatus("已复制 fileId 到剪贴板。");
+            UpdateStatus("已复制百里 fileId");
+        }
+        catch (Exception ex)
+        {
+            AppendGearExportStatus("复制失败：" + ex.Message);
+        }
+    }
+
+    private void SaveBailiResultImage()
+    {
+        if (_bailiLastResult == null)
+            return;
+
+        using var save = new SaveFileDialog
+        {
+            Title = "保存战力分析图",
+            FileName = "baili-gear-stat.jpg",
+            Filter = "图片 (*.jpg;*.png)|*.jpg;*.jpeg;*.png|所有文件 (*.*)|*.*",
+            DefaultExt = "jpg",
+            AddExtension = true,
+        };
+        if (save.ShowDialog(this) != DialogResult.OK)
+            return;
+
+        try
+        {
+            File.WriteAllBytes(save.FileName, _bailiLastResult.ImageBytes);
+            AppendGearExportStatus("已保存分析图：" + save.FileName);
+        }
+        catch (Exception ex)
+        {
+            AppendGearExportStatus("保存失败：" + ex.Message);
+        }
     }
 
     private async Task StartGearScanAsync()
@@ -264,6 +427,7 @@ public partial class MainForm
         try
         {
             _gearExportDocument = null;
+            ClearBailiResultOnPage();
             _gearScanner?.Dispose();
             _gearScanner = new GearPacketScanner();
             _gearScanner.Start();
@@ -306,14 +470,45 @@ public partial class MainForm
             _gearExportDocument = result.Document;
 
             AppendGearExportStatus(
-                $"解包成功：原始 {result.RawItemCount} 件，导出 {result.ExportedItemCount} 件" +
+                $"解包成功：原始 {result.RawItemCount} 件，可用 {result.ExportedItemCount} 件" +
                 (result.LevelZeroCount > 0 ? $"（其中等级 0：{result.LevelZeroCount}）" : "") +
-                "。可点击「导出 gear.txt」。");
-            SetGearExportUiState(
-                $"已解包 {result.ExportedItemCount} 件",
-                scanning: false,
-                canExport: result.ExportedItemCount > 0);
-            UpdateStatus($"战力分析完成：{result.ExportedItemCount} 件");
+                "。");
+
+            if (result.ExportedItemCount <= 0)
+            {
+                ClearBailiResultOnPage();
+                SetGearExportUiState("解包无装备", scanning: false, canExport: false);
+                UpdateStatus("战力分析：解包结果为空");
+            }
+            else
+            {
+                try
+                {
+                    AppendGearExportStatus("解包完成，正在自动上传百里战力分析……");
+                    SetGearExportUiState("百里分析中", scanning: false, canExport: false);
+                    UpdateStatus("战力分析：百里战力分析中");
+
+                    var baili = new BailiGearStatClient();
+                    var bailiResult = await baili.AnalyzeAsync(_gearExportDocument);
+                    AppendGearExportStatus(
+                        $"百里分析完成，fileId={bailiResult.FileId}（可复制到 QQ 百里机器人继续使用）。");
+                    ShowBailiResultOnPage(bailiResult);
+                    UpdateStatus("战力分析完成");
+                    SetGearExportUiState(
+                        $"已分析 {_gearExportDocument.Items.Count} 件",
+                        scanning: false,
+                        canExport: true);
+                }
+                catch (Exception bailiEx)
+                {
+                    AppendGearExportStatus("自动百里分析失败：" + bailiEx.Message + "（可点「重新分析」重试）");
+                    UpdateStatus("百里战力分析失败：" + bailiEx.Message);
+                    SetGearExportUiState(
+                        $"已解包 {_gearExportDocument.Items.Count} 件",
+                        scanning: false,
+                        canExport: true);
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -331,7 +526,9 @@ public partial class MainForm
             if (canExport)
             {
                 SetGearExportUiState(
-                    $"已解包 {_gearExportDocument!.Items.Count} 件",
+                    _bailiLastResult != null
+                        ? $"已分析 {_gearExportDocument!.Items.Count} 件"
+                        : $"已解包 {_gearExportDocument!.Items.Count} 件",
                     scanning: false,
                     canExport: true);
             }
@@ -346,6 +543,8 @@ public partial class MainForm
                 _btnGearExportFile.Enabled = false;
                 _btnBailiAnalyze.Enabled = false;
                 _btnBailiAnalyzeFile.Enabled = true;
+                _btnBailiCopyFileId.Enabled = _bailiLastResult != null;
+                _btnBailiSaveImage.Enabled = _bailiLastResult != null;
             }
         }
     }
@@ -412,7 +611,7 @@ public partial class MainForm
         AppendGearExportStatus(
             fromFile
                 ? $"正在上传到百里分析：{filePath}"
-                : "正在上传当前解包结果到百里战力分析……");
+                : "正在重新上传当前解包结果到百里战力分析……");
         UpdateStatus("战力分析：百里战力分析中");
 
         try
@@ -425,8 +624,8 @@ public partial class MainForm
                 result = await client.AnalyzeAsync(_gearExportDocument!);
 
             AppendGearExportStatus($"百里分析完成，fileId={result.FileId}（可复制到 QQ 百里机器人继续使用）。");
+            ShowBailiResultOnPage(result);
             UpdateStatus("百里战力分析完成");
-            ShowBailiResultDialog(result);
         }
         catch (Exception ex)
         {
@@ -437,132 +636,13 @@ public partial class MainForm
         {
             _gearExportBusy = false;
             SetGearExportUiState(
-                canExport ? $"已解包 {_gearExportDocument!.Items.Count} 件" : "未开始",
+                canExport
+                    ? (_bailiLastResult != null
+                        ? $"已分析 {_gearExportDocument!.Items.Count} 件"
+                        : $"已解包 {_gearExportDocument!.Items.Count} 件")
+                    : "未开始",
                 scanning: false,
                 canExport: canExport);
         }
-    }
-
-    private void ShowBailiResultDialog(BailiGearStatResult result)
-    {
-        Image? image = null;
-        try
-        {
-            using var ms = new MemoryStream(result.ImageBytes, writable: false);
-            image = Image.FromStream(ms);
-        }
-        catch (Exception ex)
-        {
-            AppendGearExportStatus("分析图解析失败：" + ex.Message);
-            return;
-        }
-
-        var form = new Form
-        {
-            Text = "百里战力分析",
-            StartPosition = FormStartPosition.CenterParent,
-            Size = new Size(960, 720),
-            MinimumSize = new Size(640, 480),
-            ShowInTaskbar = false,
-            MinimizeBox = true,
-            MaximizeBox = true,
-            Owner = this,
-        };
-        if (Icon != null)
-            form.Icon = Icon;
-
-        var header = new Panel
-        {
-            Dock = DockStyle.Top,
-            Height = 48,
-            Padding = new Padding(12, 8, 12, 8),
-            BackColor = Color.FromArgb(248, 249, 250),
-        };
-        var lblId = new Label
-        {
-            Text = "fileId：" + result.FileId,
-            AutoSize = false,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Font = new Font("Microsoft YaHei UI", 9.5F),
-        };
-        var btnCopy = new AntdUI.Button
-        {
-            Text = "复制 fileId",
-            Dock = DockStyle.Right,
-            Width = 110,
-            Radius = 6,
-            BorderWidth = 1,
-            DefaultBack = Color.White,
-            DefaultBorderColor = Color.FromArgb(218, 220, 224),
-            Margin = new Padding(8, 0, 0, 0),
-        };
-        btnCopy.Click += (_, _) =>
-        {
-            try
-            {
-                Clipboard.SetText(result.FileId);
-                AppendGearExportStatus("已复制 fileId 到剪贴板。");
-                UpdateStatus("已复制百里 fileId");
-            }
-            catch (Exception ex)
-            {
-                AppendGearExportStatus("复制失败：" + ex.Message);
-            }
-        };
-        var btnSave = new AntdUI.Button
-        {
-            Text = "保存图片",
-            Dock = DockStyle.Right,
-            Width = 100,
-            Radius = 6,
-            Type = AntdUI.TTypeMini.Primary,
-            Margin = new Padding(8, 0, 0, 0),
-        };
-        btnSave.Click += (_, _) =>
-        {
-            using var save = new SaveFileDialog
-            {
-                Title = "保存战力分析图",
-                FileName = "baili-gear-stat.jpg",
-                Filter = "图片 (*.jpg;*.png)|*.jpg;*.jpeg;*.png|所有文件 (*.*)|*.*",
-                DefaultExt = "jpg",
-                AddExtension = true,
-            };
-            if (save.ShowDialog(form) != DialogResult.OK)
-                return;
-            try
-            {
-                File.WriteAllBytes(save.FileName, result.ImageBytes);
-                AppendGearExportStatus("已保存分析图：" + save.FileName);
-            }
-            catch (Exception ex)
-            {
-                AppendGearExportStatus("保存失败：" + ex.Message);
-            }
-        };
-
-        header.Controls.Add(lblId);
-        header.Controls.Add(btnCopy);
-        header.Controls.Add(btnSave);
-
-        var picture = new PictureBox
-        {
-            Dock = DockStyle.Fill,
-            SizeMode = PictureBoxSizeMode.Zoom,
-            BackColor = Color.FromArgb(32, 33, 36),
-            Image = image,
-        };
-
-        form.FormClosed += (_, _) =>
-        {
-            picture.Image = null;
-            image.Dispose();
-            form.Dispose();
-        };
-
-        form.Controls.Add(picture);
-        form.Controls.Add(header);
-        form.Show(this);
     }
 }
