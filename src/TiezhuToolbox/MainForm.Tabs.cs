@@ -132,7 +132,7 @@ public partial class MainForm
         {
             BackColor = Color.White,
             Location = new Point(24, 24),
-            Size = new Size(720, 950),
+            Size = new Size(720, 1080),
             Padding = new Padding(24),
         };
         host.Resize += (_, _) => card.Width = Math.Min(
@@ -265,11 +265,39 @@ public partial class MainForm
             maxUnit, matchLabel, _numHeroMatchThreshold, matchUnit,
         });
 
+        var legendarySpeedTitle = CreateSettingsHeading(
+            "传说装备赌速度",
+            "仅红装生效；各档为该强化阶段前要求的最低速度。紫装仍用固定严格阶梯 3/6/9/12/12，终局 15。",
+            416);
+        var legendarySpeedPanel = new FlowLayoutPanel
+        {
+            Location = new Point(24, 476),
+            Size = new Size(690, 40),
+            AutoSize = false,
+            WrapContents = false,
+            Margin = Padding.Empty,
+        };
+        _numLegendarySpeedPlus3 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus3);
+        _numLegendarySpeedPlus6 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus6);
+        _numLegendarySpeedPlus9 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus9);
+        _numLegendarySpeedPlus12 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus12);
+        _numLegendarySpeedPlus15 = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultBeforePlus15);
+        _numLegendarySpeedFinal = CreateLegendarySpeedInput(LegendarySpeedLadder.DefaultFinalPlus15);
+        legendarySpeedPanel.Controls.AddRange(new Control[]
+        {
+            CreateLegendarySpeedLabel("+3前"), _numLegendarySpeedPlus3,
+            CreateLegendarySpeedLabel("+6前"), _numLegendarySpeedPlus6,
+            CreateLegendarySpeedLabel("+9前"), _numLegendarySpeedPlus9,
+            CreateLegendarySpeedLabel("+12前"), _numLegendarySpeedPlus12,
+            CreateLegendarySpeedLabel("+15前"), _numLegendarySpeedPlus15,
+            CreateLegendarySpeedLabel("+15终"), _numLegendarySpeedFinal,
+        });
+
         _chkHeroicOnlyGambleSpeed = new AntdUI.Checkbox
         {
             Text = "紫装只赌速度（忽略分数和匹配度，速度不达标立即处理）",
             Checked = false,
-            Location = new Point(24, 430),
+            Location = new Point(24, 530),
             Size = new Size(470, 34),
         };
         _chkHeroicOnlyGambleSpeed.CheckedChanged += (_, _) =>
@@ -282,7 +310,7 @@ public partial class MainForm
         {
             Text = "速度套只强化带速度的装备（鞋子看主属性，其他部位看副属性）",
             Checked = true,
-            Location = new Point(24, 466),
+            Location = new Point(24, 566),
             Size = new Size(520, 34),
         };
         _chkSpeedSetRequiresSpeed.CheckedChanged += (_, _) =>
@@ -295,7 +323,7 @@ public partial class MainForm
         {
             Text = "暴击/暴伤高权重子类的项链只强化对应主属性",
             Checked = true,
-            Location = new Point(24, 502),
+            Location = new Point(24, 602),
             Size = new Size(520, 34),
         };
         _chkCriticalNecklaceMainStatRule.CheckedChanged += (_, _) =>
@@ -308,7 +336,7 @@ public partial class MainForm
         {
             Text = "遇到符合保留条件的装备后停止（关闭后将返回背包并继续下一件）",
             Checked = true,
-            Location = new Point(24, 538),
+            Location = new Point(24, 638),
             Size = new Size(520, 34),
         };
         _chkAutoStopOnValuableEquipment.CheckedChanged += (_, _) => SaveSettingsFromControls();
@@ -316,11 +344,11 @@ public partial class MainForm
         var rulesTitle = CreateSettingsHeading(
             "自动规则说明",
             "推荐匹配与套装需求数据会自动应用以下规则。",
-            586);
+            686);
         var rulesPanel = new Panel
         {
             BackColor = Color.FromArgb(247, 249, 252),
-            Location = new Point(24, 646),
+            Location = new Point(24, 746),
             Size = new Size(690, 194),
             Padding = new Padding(12, 9, 12, 9),
         };
@@ -329,7 +357,7 @@ public partial class MainForm
             Dock = DockStyle.Fill,
             Font = new Font("Microsoft YaHei UI", 9.2F),
             ForeColor = Color.FromArgb(66, 70, 77),
-            Text = "• 红装赌速度：比紫装多一次强化机会，允许累计歪一跳。\r\n"
+            Text = "• 红装赌速度：各档最低速度可在上方自定义，默认 3/3/6/9/12，终局 15。\r\n"
                    + "• 紫装只赌速度：鞋子除外；开启后忽略分数与匹配度，按严格速度阶梯处理。\r\n"
                    + "• 速度套速度规则：鞋子必须为速度主属性，其他部位必须含速度副属性。\r\n"
                    + "• 暴击项链规则：暴击率或暴伤达到高权重时，项链只接受对应的主属性。\r\n"
@@ -343,7 +371,7 @@ public partial class MainForm
         var reset = new AntdUI.Button
         {
             Text = "恢复默认设置",
-            Location = new Point(24, 866),
+            Location = new Point(24, 966),
             Size = new Size(120, 34),
             Radius = 6,
         };
@@ -356,6 +384,8 @@ public partial class MainForm
         card.Controls.Add(_chkCriticalNecklaceMainStatRule);
         card.Controls.Add(_chkSpeedSetRequiresSpeed);
         card.Controls.Add(_chkHeroicOnlyGambleSpeed);
+        card.Controls.Add(legendarySpeedPanel);
+        card.Controls.Add(legendarySpeedTitle);
         card.Controls.Add(automationPanel);
         card.Controls.Add(automationTitle);
         card.Controls.Add(recognitionSettingsPanel);
@@ -365,6 +395,35 @@ public partial class MainForm
         card.Controls.Add(title);
         host.Controls.Add(card);
         return host;
+    }
+
+    private static Label CreateLegendarySpeedLabel(string text)
+        => new()
+        {
+            Text = text,
+            ForeColor = Color.FromArgb(32, 33, 36),
+            Size = new Size(48, 34),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = Padding.Empty,
+        };
+
+    private AntdUI.InputNumber CreateLegendarySpeedInput(int defaultValue)
+    {
+        var input = new AntdUI.InputNumber
+        {
+            Size = new Size(54, 34),
+            Minimum = 0,
+            Maximum = 45,
+            Value = defaultValue,
+            Radius = 6,
+            Margin = new Padding(0, 0, 8, 0),
+        };
+        input.ValueChanged += (_, _) =>
+        {
+            SaveSettingsFromControls();
+            UpdateAdvice();
+        };
+        return input;
     }
 
     /// <summary>
@@ -411,6 +470,13 @@ public partial class MainForm
             _chkHeroicOnlyGambleSpeed.Checked = _settings.HeroicOnlyGambleSpeed;
             _chkSpeedSetRequiresSpeed.Checked = _settings.SpeedSetRequiresSpeed;
             _chkCriticalNecklaceMainStatRule.Checked = _settings.CriticalNecklaceMainStatRule;
+            var ladder = _settings.LegendarySpeedLadder ?? new LegendarySpeedLadder();
+            _numLegendarySpeedPlus3.Value = ladder.BeforePlus3;
+            _numLegendarySpeedPlus6.Value = ladder.BeforePlus6;
+            _numLegendarySpeedPlus9.Value = ladder.BeforePlus9;
+            _numLegendarySpeedPlus12.Value = ladder.BeforePlus12;
+            _numLegendarySpeedPlus15.Value = ladder.BeforePlus15;
+            _numLegendarySpeedFinal.Value = ladder.FinalPlus15;
             _numStarForgeMaximumChanges.Value = _settings.StarForgeMaximumChanges;
             for (var i = 0; i < _starForgeRows.Count; i++)
             {
@@ -456,6 +522,15 @@ public partial class MainForm
         _settings.HeroicOnlyGambleSpeed = _chkHeroicOnlyGambleSpeed.Checked;
         _settings.SpeedSetRequiresSpeed = _chkSpeedSetRequiresSpeed.Checked;
         _settings.CriticalNecklaceMainStatRule = _chkCriticalNecklaceMainStatRule.Checked;
+        _settings.LegendarySpeedLadder = new LegendarySpeedLadder
+        {
+            BeforePlus3 = (int)_numLegendarySpeedPlus3.Value,
+            BeforePlus6 = (int)_numLegendarySpeedPlus6.Value,
+            BeforePlus9 = (int)_numLegendarySpeedPlus9.Value,
+            BeforePlus12 = (int)_numLegendarySpeedPlus12.Value,
+            BeforePlus15 = (int)_numLegendarySpeedPlus15.Value,
+            FinalPlus15 = (int)_numLegendarySpeedFinal.Value,
+        };
         _settings.StarForgeMaximumChanges = (int)_numStarForgeMaximumChanges.Value;
         _settings.StarForgeTargets = _starForgeRows.Select(row => new StarForgeTargetSetting
         {
@@ -499,6 +574,7 @@ public partial class MainForm
         _settings.HeroicOnlyGambleSpeed = defaults.HeroicOnlyGambleSpeed;
         _settings.SpeedSetRequiresSpeed = defaults.SpeedSetRequiresSpeed;
         _settings.CriticalNecklaceMainStatRule = defaults.CriticalNecklaceMainStatRule;
+        _settings.LegendarySpeedLadder = new LegendarySpeedLadder();
         _settings.StarForgeMaximumChanges = defaults.StarForgeMaximumChanges;
         _settings.StarForgeTargets = defaults.StarForgeTargets;
         _disabledDemandProfiles.Clear();

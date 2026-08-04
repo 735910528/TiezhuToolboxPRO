@@ -583,7 +583,8 @@ public partial class MainForm : Form
             _chkHeroicOnlyGambleSpeed.Checked,
             _chkSpeedSetRequiresSpeed.Checked,
             _chkCriticalNecklaceMainStatRule.Checked,
-            _disabledDemandProfiles);
+            _disabledDemandProfiles,
+            ReadLegendarySpeedLadderFromControls());
 
         lblAdviceBadge.Text = result.Text;
         lblAdviceBadge.BackColor = result.Advice switch
@@ -598,6 +599,17 @@ public partial class MainForm : Form
         };
         lblAdviceDetail.Text = result.Detail;
     }
+
+    private Modules.Recommend.LegendarySpeedLadder ReadLegendarySpeedLadderFromControls()
+        => new()
+        {
+            BeforePlus3 = (int)_numLegendarySpeedPlus3.Value,
+            BeforePlus6 = (int)_numLegendarySpeedPlus6.Value,
+            BeforePlus9 = (int)_numLegendarySpeedPlus9.Value,
+            BeforePlus12 = (int)_numLegendarySpeedPlus12.Value,
+            BeforePlus15 = (int)_numLegendarySpeedPlus15.Value,
+            FinalPlus15 = (int)_numLegendarySpeedFinal.Value,
+        };
 
     private void numThreshold_ValueChanged(object sender, AntdUI.DecimalEventArgs e)
     {

@@ -35,8 +35,8 @@ public record EnhanceAdviceResult(EnhanceAdvice Advice, string Text, string Deta
 /// 85 级分数阶梯 —— +3 前分数 ≥ 阈值，之后每 3 级要求 +6 分，+15 时模拟游戏增量且重铸后分数 ≥ 65；
 /// 88 级分数阶梯 —— 默认 28 分起步，之后每 3 级要求 +7 分，+15 达到最终要求时建议保留且不建议重铸；
 /// 分数不达标时赌速度 —— 英雄装备按 3/6/9/12/12 的严格阶梯判断；
-/// 传说装备因多一次强化机会，按 3/3/6/9/12 判断，允许累计歪一跳；
-/// +15 时速度 ≥ 15，85 级建议重铸，88 级建议保留。
+/// 传说装备默认按 3/3/6/9/12 判断（允许累计歪一跳），各档速度要求可由用户配置；
+/// +15 时速度默认 ≥ 15（可配置），85 级建议重铸，88 级建议保留。
 /// 开启“紫装只赌速度”后，除鞋子外的英雄装备忽略分数、角色匹配度和主属性规则，只走严格速度阶梯。
 /// 分数达标时仍会检查用途：没有速度潜质且最高需求匹配度低于用户设置时建议放弃；
 /// 左三件（武器/头盔/铠甲）直接走上述流程；项链/戒指即使是固定值主属性，只要速度达标也可作为速度散件继续赌；
@@ -46,6 +46,7 @@ public static class EnhancementAdvisor
 {
     private const double ReforgeScoreThreshold = 65;
     private const double HighCriticalWeightRatio = 0.30;
+    private const int StrictFinalSpeed = 15;
     public const double DefaultMinimumDemandMatchScore = 70;
 
     [Flags]
@@ -63,13 +64,9 @@ public static class EnhancementAdvisor
     private static readonly (int LevelCap, double Offset)[] Level88ScoreSteps =
         { (3, 0), (6, 7), (9, 14), (12, 21), (15, 28) };
 
-    /// <summary>严格赌速度阶梯：每次可提升速度的强化都必须命中。</summary>
+    /// <summary>严格赌速度阶梯（紫装/非传说）：每次可提升速度的强化都必须命中。</summary>
     private static readonly (int LevelCap, int Speed)[] StrictSpeedSteps =
         { (3, 3), (6, 6), (9, 9), (12, 12), (15, 12) };
-
-    /// <summary>传说装备比英雄装备多一次可提升速度的强化机会，允许累计歪一跳。</summary>
-    private static readonly (int LevelCap, int Speed)[] LegendarySpeedSteps =
-        { (3, 3), (6, 3), (9, 6), (12, 9), (15, 12) };
 
     /// <summary>
     /// 分析装备是否值得继续强化。
@@ -83,6 +80,7 @@ public static class EnhancementAdvisor
     /// <param name="speedSetRequiresSpeed">速度套鞋子是否必须为速度主属性、其他部位是否必须含速度副属性。</param>
     /// <param name="criticalNecklaceMainStatRule">暴击率或暴伤达到高权重时，项链是否只接受对应主属性。</param>
     /// <param name="disabledDemandProfiles">不参与用途匹配的套装子类键。</param>
+    /// <param name="legendarySpeedLadder">传说装备赌速度各档最低速度；null 使用默认 3/3/6/9/12，终局 15。</param>
     public static EnhanceAdviceResult Analyze(
         EquipmentInfo info,
         double leftThreshold,
@@ -92,9 +90,12 @@ public static class EnhancementAdvisor
         bool heroicOnlyGambleSpeed = false,
         bool speedSetRequiresSpeed = true,
         bool criticalNecklaceMainStatRule = true,
-        IReadOnlySet<string>? disabledDemandProfiles = null)
+        IReadOnlySet<string>? disabledDemandProfiles = null,
+        LegendarySpeedLadder? legendarySpeedLadder = null)
     {
         minimumDemandMatchScore = Math.Clamp(minimumDemandMatchScore, 0, 100);
+        var legendaryLadder = (legendarySpeedLadder ?? LegendarySpeedLadder.CreateDefault()).Clone();
+        legendaryLadder.Normalize();
         var part = EquipmentRules.DetectPart(info.Quality);
         if (part == EquipmentPart.Unknown)
             return new EnhanceAdviceResult(EnhanceAdvice.None, "无法判断", "未从品质文本中识别出装备部位");
@@ -133,9 +134,9 @@ public static class EnhancementAdvisor
             if (leftScoreAdvice != null)
                 return ApplyHeroMatchGate(
                     info, leftScoreAdvice, speed, enhance, minimumDemandMatchScore, isLegendary,
-                    criticalNecklaceMainStatRule, disabledDemandProfiles);
+                    criticalNecklaceMainStatRule, disabledDemandProfiles, legendaryLadder);
 
-            return SpeedLadder(speed, enhance, isLevel88, isLegendary,
+            return SpeedLadder(speed, enhance, isLevel88, isLegendary, legendaryLadder,
                 GiveUpDetail(score, reforgedScore, enhance, threshold, isLevel88));
         }
 
@@ -144,7 +145,8 @@ public static class EnhancementAdvisor
         {
             if (part is EquipmentPart.Necklace or EquipmentPart.Ring)
             {
-                var speedOffPiece = SpeedOffPieceLadder(GetSpeed(info), enhance, isLevel88, isLegendary);
+                var speedOffPiece = SpeedOffPieceLadder(
+                    GetSpeed(info), enhance, isLevel88, isLegendary, legendaryLadder);
                 if (speedOffPiece != null)
                     return speedOffPiece;
             }
@@ -157,10 +159,10 @@ public static class EnhancementAdvisor
         if (byScore != null)
             return ApplyHeroMatchGate(
                 info, byScore, GetSpeed(info), enhance, minimumDemandMatchScore, isLegendary,
-                criticalNecklaceMainStatRule, disabledDemandProfiles);
+                criticalNecklaceMainStatRule, disabledDemandProfiles, legendaryLadder);
 
         if (part is EquipmentPart.Necklace or EquipmentPart.Ring)
-            return SpeedLadder(GetSpeed(info), enhance, isLevel88, isLegendary,
+            return SpeedLadder(GetSpeed(info), enhance, isLevel88, isLegendary, legendaryLadder,
                 GiveUpDetail(score, reforgedScore, enhance, threshold, isLevel88));
 
         return new EnhanceAdviceResult(EnhanceAdvice.GiveUp, "分数过低，建议放弃",
@@ -206,9 +208,10 @@ public static class EnhancementAdvisor
         int speed,
         int enhance,
         double minimumDemandMatchScore,
-        bool allowOneMiss,
+        bool isLegendary,
         bool criticalNecklaceMainStatRule,
-        IReadOnlySet<string>? disabledDemandProfiles)
+        IReadOnlySet<string>? disabledDemandProfiles,
+        LegendarySpeedLadder legendaryLadder)
     {
         if (!DemandDatabase.Instance.IsLoaded)
             return scoreAdvice;
@@ -242,7 +245,7 @@ public static class EnhancementAdvisor
             }
         }
 
-        if (HasSpeedPotential(speed, enhance, allowOneMiss))
+        if (HasSpeedPotential(speed, enhance, isLegendary, legendaryLadder))
             return scoreAdvice;
 
         if (bestMatch?.Score >= minimumDemandMatchScore)
@@ -346,22 +349,29 @@ public static class EnhancementAdvisor
         };
 
     /// <summary>副属性速度是否达到当前强化档位的速度潜质要求。</summary>
-    private static bool HasSpeedPotential(int speed, int enhance, bool allowOneMiss)
+    private static bool HasSpeedPotential(
+        int speed, int enhance, bool isLegendary, LegendarySpeedLadder legendaryLadder)
     {
-        foreach (var (cap, required) in GetSpeedSteps(allowOneMiss))
+        foreach (var (cap, required) in GetSpeedSteps(isLegendary, legendaryLadder))
         {
             if (enhance < cap)
                 return speed >= required;
         }
 
-        return enhance == 15 && speed >= 15;
+        return enhance == 15 && speed >= GetFinalSpeed(isLegendary, legendaryLadder);
     }
 
     /// <summary>赌速度阶梯：速度达标返回继续赌速度/建议重铸，否则建议放弃。</summary>
     private static EnhanceAdviceResult SpeedLadder(
-        int speed, int enhance, bool isLevel88, bool allowOneMiss, string giveUpDetail)
+        int speed,
+        int enhance,
+        bool isLevel88,
+        bool isLegendary,
+        LegendarySpeedLadder legendaryLadder,
+        string giveUpDetail)
     {
-        foreach (var (cap, required) in GetSpeedSteps(allowOneMiss))
+        var finalSpeed = GetFinalSpeed(isLegendary, legendaryLadder);
+        foreach (var (cap, required) in GetSpeedSteps(isLegendary, legendaryLadder))
         {
             if (enhance < cap)
             {
@@ -372,21 +382,26 @@ public static class EnhancementAdvisor
             }
         }
 
-        if (enhance == 15 && isLevel88 && speed >= 15)
+        if (enhance == 15 && isLevel88 && speed >= finalSpeed)
             return new EnhanceAdviceResult(EnhanceAdvice.Keep,
-                "建议保留", $"88级装备不可重铸，分数不足但速度 {speed} ≥ 15");
+                "建议保留", $"88级装备不可重铸，分数不足但速度 {speed} ≥ {finalSpeed}");
 
-        return enhance == 15 && speed >= 15
+        return enhance == 15 && speed >= finalSpeed
             ? new EnhanceAdviceResult(EnhanceAdvice.Reforge,
-                "建议重铸", $"分数不足，但速度 {speed} ≥ 15，值得重铸")
+                "建议重铸", $"分数不足，但速度 {speed} ≥ {finalSpeed}，值得重铸")
             : new EnhanceAdviceResult(EnhanceAdvice.GiveUp, "分数过低，建议放弃", giveUpDetail);
     }
 
     /// <summary>固定值主属性项链/戒指的速度散件例外：速度达标返回建议，否则仍按固定主属性淘汰。</summary>
     private static EnhanceAdviceResult? SpeedOffPieceLadder(
-        int speed, int enhance, bool isLevel88, bool allowOneMiss)
+        int speed,
+        int enhance,
+        bool isLevel88,
+        bool isLegendary,
+        LegendarySpeedLadder legendaryLadder)
     {
-        foreach (var (cap, required) in GetSpeedSteps(allowOneMiss))
+        var finalSpeed = GetFinalSpeed(isLegendary, legendaryLadder);
+        foreach (var (cap, required) in GetSpeedSteps(isLegendary, legendaryLadder))
         {
             if (enhance < cap)
             {
@@ -397,13 +412,13 @@ public static class EnhancementAdvisor
             }
         }
 
-        if (enhance == 15 && isLevel88 && speed >= 15)
+        if (enhance == 15 && isLevel88 && speed >= finalSpeed)
             return new EnhanceAdviceResult(EnhanceAdvice.Keep,
-                "建议保留", $"88级固定值主属性仅作速度散件，速度 {speed} ≥ 15");
+                "建议保留", $"88级固定值主属性仅作速度散件，速度 {speed} ≥ {finalSpeed}");
 
-        return enhance == 15 && speed >= 15
+        return enhance == 15 && speed >= finalSpeed
             ? new EnhanceAdviceResult(EnhanceAdvice.Reforge,
-                "建议重铸", $"固定值主属性仅作速度散件，速度 {speed} ≥ 15，值得重铸")
+                "建议重铸", $"固定值主属性仅作速度散件，速度 {speed} ≥ {finalSpeed}，值得重铸")
             : null;
     }
 
@@ -427,20 +442,24 @@ public static class EnhancementAdvisor
             }
         }
 
-        if (enhance == 15 && isLevel88 && speed >= 15)
+        if (enhance == 15 && isLevel88 && speed >= StrictFinalSpeed)
             return new EnhanceAdviceResult(EnhanceAdvice.Keep,
-                "建议保留", $"紫装只赌速度：88级最终速度 {speed} ≥ 15");
+                "建议保留", $"紫装只赌速度：88级最终速度 {speed} ≥ {StrictFinalSpeed}");
 
-        if (enhance == 15 && speed >= 15)
+        if (enhance == 15 && speed >= StrictFinalSpeed)
             return new EnhanceAdviceResult(EnhanceAdvice.Reforge,
-                "建议重铸", $"紫装只赌速度：最终速度 {speed} ≥ 15，值得重铸");
+                "建议重铸", $"紫装只赌速度：最终速度 {speed} ≥ {StrictFinalSpeed}，值得重铸");
 
         return new EnhanceAdviceResult(EnhanceAdvice.GiveUp,
-            "紫装速度不达标，建议放弃", $"紫装只赌速度：最终速度 {speed} < 15");
+            "紫装速度不达标，建议放弃", $"紫装只赌速度：最终速度 {speed} < {StrictFinalSpeed}");
     }
 
-    private static (int LevelCap, int Speed)[] GetSpeedSteps(bool allowOneMiss)
-        => allowOneMiss ? LegendarySpeedSteps : StrictSpeedSteps;
+    private static (int LevelCap, int Speed)[] GetSpeedSteps(
+        bool isLegendary, LegendarySpeedLadder legendaryLadder)
+        => isLegendary ? legendaryLadder.ToSteps() : StrictSpeedSteps;
+
+    private static int GetFinalSpeed(bool isLegendary, LegendarySpeedLadder legendaryLadder)
+        => isLegendary ? legendaryLadder.FinalPlus15 : StrictFinalSpeed;
 
     /// <summary>右三件固定攻击/防御/生命主属性判定（百分比主属性不算固定值）。</summary>
     private static bool IsFixedMainStat(string name, string value)

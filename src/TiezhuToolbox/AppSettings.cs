@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using TiezhuToolbox.Modules.Recommend;
 using TiezhuToolbox.Modules.StarForge;
 
 namespace TiezhuToolbox;
@@ -7,7 +8,7 @@ namespace TiezhuToolbox;
 /// <summary>软件设置。新增字段必须提供兼容旧文件的默认值。</summary>
 public class AppSettings
 {
-    public const int CurrentVersion = 10;
+    public const int CurrentVersion = 11;
 
     public int Version { get; set; } = CurrentVersion;
     public decimal LeftThreshold { get; set; } = 24;
@@ -32,6 +33,8 @@ public class AppSettings
     // 保留第一版特殊规则使用的 JSON 字段名，兼容已经保存的 settings.json。
     [JsonPropertyName("DoubleCritNecklaceOnly")]
     public bool CriticalNecklaceMainStatRule { get; set; } = true;
+    /// <summary>传说装备赌速度各档最低速度（紫装仍用固定严格阶梯）。</summary>
+    public LegendarySpeedLadder LegendarySpeedLadder { get; set; } = new();
     /// <summary>不参与装备用途匹配的需求子类，键格式为“套装代码/子类代码”。</summary>
     public List<string> DisabledDemandProfiles { get; set; } = new();
     public int StarForgeMaximumChanges { get; set; } = 100;
@@ -59,6 +62,8 @@ public class AppSettings
             AdbAddress = "127.0.0.1:16384";
         if (string.IsNullOrWhiteSpace(WindowTitle))
             WindowTitle = "第七史诗";
+        LegendarySpeedLadder ??= new();
+        LegendarySpeedLadder.Normalize();
         DisabledDemandProfiles ??= new List<string>();
         DisabledDemandProfiles = DisabledDemandProfiles
             .Where(key => !string.IsNullOrWhiteSpace(key))

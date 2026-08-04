@@ -15,6 +15,12 @@ public partial class MainForm
     private AntdUI.Checkbox _chkHeroicOnlyGambleSpeed = null!;
     private AntdUI.Checkbox _chkSpeedSetRequiresSpeed = null!;
     private AntdUI.Checkbox _chkCriticalNecklaceMainStatRule = null!;
+    private AntdUI.InputNumber _numLegendarySpeedPlus3 = null!;
+    private AntdUI.InputNumber _numLegendarySpeedPlus6 = null!;
+    private AntdUI.InputNumber _numLegendarySpeedPlus9 = null!;
+    private AntdUI.InputNumber _numLegendarySpeedPlus12 = null!;
+    private AntdUI.InputNumber _numLegendarySpeedPlus15 = null!;
+    private AntdUI.InputNumber _numLegendarySpeedFinal = null!;
     private Label _lblAutoDevice = null!;
     private Label _lblAutoState = null!;
     private Label _lblAutoStats = null!;
@@ -243,6 +249,7 @@ public partial class MainForm
         _chkHeroicOnlyGambleSpeed.Enabled = false;
         _chkSpeedSetRequiresSpeed.Enabled = false;
         _chkCriticalNecklaceMainStatRule.Enabled = false;
+        SetLegendarySpeedInputsEnabled(false);
         _lblAutoDevice.Text = $"目标：{session.DisplayName}";
         _lblAutoState.Text = "运行中";
         _lblAutoState.ForeColor = AdviceContinueColor;
@@ -259,7 +266,8 @@ public partial class MainForm
             _chkHeroicOnlyGambleSpeed.Checked,
             _chkSpeedSetRequiresSpeed.Checked,
             _chkCriticalNecklaceMainStatRule.Checked,
-            _disabledDemandProfiles);
+            _disabledDemandProfiles,
+            ReadLegendarySpeedLadderFromControls());
         var progress = new Progress<AutoEnhancementProgress>(value =>
         {
             AppendAutoLog(value.Level, value.Message);
@@ -313,9 +321,20 @@ public partial class MainForm
                 _chkHeroicOnlyGambleSpeed.Enabled = true;
                 _chkSpeedSetRequiresSpeed.Enabled = true;
                 _chkCriticalNecklaceMainStatRule.Enabled = true;
+                SetLegendarySpeedInputsEnabled(true);
                 ApplyRecognitionAvailability(showHotKeySuccess: false);
             }
         }
+    }
+
+    private void SetLegendarySpeedInputsEnabled(bool enabled)
+    {
+        _numLegendarySpeedPlus3.Enabled = enabled;
+        _numLegendarySpeedPlus6.Enabled = enabled;
+        _numLegendarySpeedPlus9.Enabled = enabled;
+        _numLegendarySpeedPlus12.Enabled = enabled;
+        _numLegendarySpeedPlus15.Enabled = enabled;
+        _numLegendarySpeedFinal.Enabled = enabled;
     }
 
     private EquipmentDisposalMethod GetSelectedDisposalMethod()

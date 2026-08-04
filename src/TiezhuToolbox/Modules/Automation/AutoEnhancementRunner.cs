@@ -52,6 +52,7 @@ public sealed record AutoEnhancementOptions(
     bool SpeedSetRequiresSpeed,
     bool CriticalNecklaceMainStatRule,
     IReadOnlySet<string> DisabledDemandProfiles,
+    LegendarySpeedLadder LegendarySpeedLadder,
     TimeSpan UiTimeout,
     TimeSpan AnimationMinimumWait)
 {
@@ -66,8 +67,12 @@ public sealed record AutoEnhancementOptions(
         bool heroicOnlyGambleSpeed = false,
         bool speedSetRequiresSpeed = true,
         bool criticalNecklaceMainStatRule = true,
-        IReadOnlySet<string>? disabledDemandProfiles = null)
-        => new(
+        IReadOnlySet<string>? disabledDemandProfiles = null,
+        LegendarySpeedLadder? legendarySpeedLadder = null)
+    {
+        var ladder = (legendarySpeedLadder ?? LegendarySpeedLadder.CreateDefault()).Clone();
+        ladder.Normalize();
+        return new(
             Math.Clamp(maxEquipment, 1, 999),
             leftThreshold,
             rightThreshold,
@@ -81,8 +86,10 @@ public sealed record AutoEnhancementOptions(
             disabledDemandProfiles == null
                 ? new HashSet<string>(StringComparer.Ordinal)
                 : new HashSet<string>(disabledDemandProfiles, StringComparer.Ordinal),
+            ladder,
             TimeSpan.FromSeconds(10),
             TimeSpan.FromSeconds(4));
+    }
 }
 
 public sealed record AutoEnhancementResult(
@@ -177,7 +184,8 @@ public sealed class AutoEnhancementRunner : IDisposable
                     _options.HeroicOnlyGambleSpeed,
                     _options.SpeedSetRequiresSpeed,
                     _options.CriticalNecklaceMainStatRule,
-                    _options.DisabledDemandProfiles);
+                    _options.DisabledDemandProfiles,
+                    _options.LegendarySpeedLadder);
                 Report(AutoEnhancementLogLevel.Recognition,
                     $"强化判断：{advice.Text}；{advice.Detail}");
 

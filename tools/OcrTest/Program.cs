@@ -935,6 +935,26 @@ if (args.Contains("--synthetic"))
         Level = 85, Quality = "传说武器", EnhanceLevel = 6,
         SubStats = { new SubStat { Name = "速度", Value = "3" } },
     }, EnhanceAdvice.GiveUp);
+    var customLadder = new LegendarySpeedLadder
+    {
+        BeforePlus3 = 3,
+        BeforePlus6 = 3,
+        BeforePlus9 = 3,
+        BeforePlus12 = 6,
+        BeforePlus15 = 9,
+        FinalPlus15 = 12,
+    };
+    var customLadderAdvice = EnhancementAdvisor.Analyze(
+        new EquipmentInfo
+        {
+            Level = 85, Quality = "传说武器", EnhanceLevel = 6,
+            SubStats = { new SubStat { Name = "速度", Value = "3" } },
+        },
+        24, 24, 28,
+        legendarySpeedLadder: customLadder);
+    Console.WriteLine($"  自定义红装阶梯 +6 速度3 → {customLadderAdvice.Text}（{customLadderAdvice.Detail}）");
+    if (customLadderAdvice.Advice != EnhanceAdvice.GambleSpeed)
+        throw new InvalidOperationException("自定义传说赌速度阶梯未生效");
     AssertAdvice("紫装只赌速度 +0 无速度", new EquipmentInfo
     {
         Level = 85, Quality = "英雄武器", EnhanceLevel = 0,
