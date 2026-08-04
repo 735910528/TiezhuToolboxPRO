@@ -9,7 +9,6 @@ public partial class MainForm
     private AntdUI.Button _btnGearScanStart = null!;
     private AntdUI.Button _btnGearScanStop = null!;
     private AntdUI.Button _btnGearExportFile = null!;
-    private AntdUI.Button _btnBailiAnalyze = null!;
     private AntdUI.Button _btnBailiAnalyzeFile = null!;
     private AntdUI.Button _btnBailiCopyFileId = null!;
     private AntdUI.Button _btnBailiSaveImage = null!;
@@ -158,28 +157,17 @@ public partial class MainForm
         };
         _btnGearExportFile.Click += (_, _) => ExportGearTxtFile();
 
-        _btnBailiAnalyze = new AntdUI.Button
-        {
-            Text = "重新分析",
-            Location = new Point(432, 240),
-            Size = new Size(120, 36),
-            Radius = 6,
-            Enabled = false,
-            Type = AntdUI.TTypeMini.Primary,
-        };
-        _btnBailiAnalyze.Click += async (_, _) => await AnalyzeWithBailiAsync(fromFile: false);
-
         _btnBailiAnalyzeFile = new AntdUI.Button
         {
             Text = "选文件分析",
-            Location = new Point(564, 240),
+            Location = new Point(432, 240),
             Size = new Size(120, 36),
             Radius = 6,
             BorderWidth = 1,
             DefaultBack = Color.White,
             DefaultBorderColor = Color.FromArgb(218, 220, 224),
         };
-        _btnBailiAnalyzeFile.Click += async (_, _) => await AnalyzeWithBailiAsync(fromFile: true);
+        _btnBailiAnalyzeFile.Click += async (_, _) => await AnalyzeWithBailiFromFileAsync();
 
         _txtGearExportStatus = new RichTextBox
         {
@@ -256,7 +244,7 @@ public partial class MainForm
             btnOpenPythonDownload, btnOpenNpcapDownload, btnOpenBailiSite,
             _lblGearExportState,
             _btnGearScanStart, _btnGearScanStop, _btnGearExportFile,
-            _btnBailiAnalyze, _btnBailiAnalyzeFile,
+            _btnBailiAnalyzeFile,
             _txtGearExportStatus, resultHeader, _picBailiResult,
         });
         host.Controls.Add(card);
@@ -333,7 +321,6 @@ public partial class MainForm
         _btnGearScanStart.Enabled = !scanning && !_gearExportBusy;
         _btnGearScanStop.Enabled = scanning && !_gearExportBusy;
         _btnGearExportFile.Enabled = canExport && !scanning && !_gearExportBusy;
-        _btnBailiAnalyze.Enabled = canExport && !scanning && !_gearExportBusy;
         _btnBailiAnalyzeFile.Enabled = !scanning && !_gearExportBusy;
         var hasResult = _bailiLastResult != null;
         _btnBailiCopyFileId.Enabled = hasResult && !scanning && !_gearExportBusy;
@@ -501,7 +488,7 @@ public partial class MainForm
                 }
                 catch (Exception bailiEx)
                 {
-                    AppendGearExportStatus("自动百里分析失败：" + bailiEx.Message + "（可点「重新分析」重试）");
+                    AppendGearExportStatus("自动百里分析失败：" + bailiEx.Message + "（可点「选文件分析」或重新解包重试）");
                     UpdateStatus("百里战力分析失败：" + bailiEx.Message);
                     SetGearExportUiState(
                         $"已解包 {_gearExportDocument.Items.Count} 件",
@@ -541,7 +528,6 @@ public partial class MainForm
                 _btnGearScanStart.Enabled = true;
                 _btnGearScanStop.Enabled = false;
                 _btnGearExportFile.Enabled = false;
-                _btnBailiAnalyze.Enabled = false;
                 _btnBailiAnalyzeFile.Enabled = true;
                 _btnBailiCopyFileId.Enabled = _bailiLastResult != null;
                 _btnBailiSaveImage.Enabled = _bailiLastResult != null;
@@ -581,48 +567,31 @@ public partial class MainForm
         }
     }
 
-    private async Task AnalyzeWithBailiAsync(bool fromFile)
+    private async Task AnalyzeWithBailiFromFileAsync()
     {
         if (_gearExportBusy || (_gearScanner?.IsRunning ?? false))
             return;
 
-        string? filePath = null;
-        if (fromFile)
+        using var open = new OpenFileDialog
         {
-            using var open = new OpenFileDialog
-            {
-                Title = "选择 gear.txt",
-                Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*",
-                CheckFileExists = true,
-            };
-            if (open.ShowDialog(this) != DialogResult.OK)
-                return;
-            filePath = open.FileName;
-        }
-        else if (_gearExportDocument == null || _gearExportDocument.Items.Count == 0)
-        {
-            UpdateStatus("没有可分析的装备数据，请先解包或选择文件");
+            Title = "选择 gear.txt",
+            Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*",
+            CheckFileExists = true,
+        };
+        if (open.ShowDialog(this) != DialogResult.OK)
             return;
-        }
+        var filePath = open.FileName;
 
         _gearExportBusy = true;
         var canExport = _gearExportDocument?.Items.Count > 0;
         SetGearExportUiState("百里分析中", scanning: false, canExport: false);
-        AppendGearExportStatus(
-            fromFile
-                ? $"正在上传到百里分析：{filePath}"
-                : "正在重新上传当前解包结果到百里战力分析……");
+        AppendGearExportStatus($"正在上传到百里分析：{filePath}");
         UpdateStatus("战力分析：百里战力分析中");
 
         try
         {
             var client = new BailiGearStatClient();
-            BailiGearStatResult result;
-            if (fromFile)
-                result = await client.AnalyzeFileAsync(filePath!);
-            else
-                result = await client.AnalyzeAsync(_gearExportDocument!);
-
+            var result = await client.AnalyzeFileAsync(filePath);
             AppendGearExportStatus($"百里分析完成，fileId={result.FileId}（可复制到 QQ 百里机器人继续使用）。");
             ShowBailiResultOnPage(result);
             UpdateStatus("百里战力分析完成");
@@ -640,7 +609,7 @@ public partial class MainForm
                     ? (_bailiLastResult != null
                         ? $"已分析 {_gearExportDocument!.Items.Count} 件"
                         : $"已解包 {_gearExportDocument!.Items.Count} 件")
-                    : "未开始",
+                    : (_bailiLastResult != null ? "已分析" : "未开始"),
                 scanning: false,
                 canExport: canExport);
         }
