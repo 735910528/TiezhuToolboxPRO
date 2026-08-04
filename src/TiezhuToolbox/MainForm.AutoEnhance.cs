@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using TiezhuToolbox.Modules.Automation;
 
 namespace TiezhuToolbox;
@@ -8,6 +9,7 @@ public partial class MainForm
     private AntdUI.Button _btnAutoStart = null!;
     private AntdUI.Button _btnAutoStop = null!;
     private AntdUI.Button _btnAutoClearLog = null!;
+    private AntdUI.Button _btnAutoOpenScreenshot = null!;
     private AntdUI.InputNumber _numAutoMaxEquipment = null!;
     private AntdUI.Select _comboAutoDisposalMethod = null!;
     private AntdUI.InputNumber _numHeroMatchThreshold = null!;
@@ -21,11 +23,14 @@ public partial class MainForm
     private AntdUI.InputNumber _numLegendarySpeedPlus12 = null!;
     private AntdUI.InputNumber _numLegendarySpeedPlus15 = null!;
     private AntdUI.InputNumber _numLegendarySpeedFinal = null!;
+    private AntdUI.Select _comboAutoLogMode = null!;
     private Label _lblAutoDevice = null!;
     private Label _lblAutoState = null!;
     private Label _lblAutoStats = null!;
+    private DataGridView _autoResultGrid = null!;
     private RichTextBox _autoLog = null!;
     private CancellationTokenSource? _autoEnhanceCancellation;
+    private bool _autoLogBriefMode = true;
 
     private bool IsAutoEnhancing => _autoEnhanceCancellation != null;
 
@@ -37,11 +42,12 @@ public partial class MainForm
             BackColor = Color.FromArgb(245, 246, 248),
             Padding = new Padding(24),
             ColumnCount = 1,
-            RowCount = 2,
+            RowCount = 3,
         };
         host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         host.RowStyles.Add(new RowStyle(SizeType.Absolute, 176));
-        host.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        host.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
+        host.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
 
         var controlCard = new Panel
         {
@@ -134,6 +140,123 @@ public partial class MainForm
             title, hint, warning, _lblAutoDevice, _btnAutoStart, _btnAutoStop,
         });
 
+        var resultCard = CreateAutoResultCard();
+        var logCard = CreateAutoLogCard();
+
+        host.Controls.Add(controlCard, 0, 0);
+        host.Controls.Add(resultCard, 0, 1);
+        host.Controls.Add(logCard, 0, 2);
+        return host;
+    }
+
+    private Control CreateAutoResultCard()
+    {
+        var resultCard = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.White,
+            Padding = new Padding(18),
+            Margin = new Padding(0, 0, 0, 14),
+        };
+        var resultHeader = new Panel { Dock = DockStyle.Top, Height = 42 };
+        var resultTitle = new Label
+        {
+            Text = "本轮结果",
+            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
+            ForeColor = TextDarkColor,
+            Dock = DockStyle.Left,
+            Width = 88,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+        _lblAutoState = new Label
+        {
+            Text = "未开始",
+            ForeColor = AdviceNoneColor,
+            Dock = DockStyle.Left,
+            Width = 150,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+        _lblAutoStats = new Label
+        {
+            Text = FormatAutoStats(0, 0, 0, 0, 0),
+            ForeColor = Color.FromArgb(95, 99, 104),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Location = new Point(420, 0),
+            Size = new Size(420, 42),
+            TextAlign = ContentAlignment.MiddleRight,
+        };
+        _btnAutoOpenScreenshot = new AntdUI.Button
+        {
+            Text = "打开截图",
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Location = new Point(858, 4),
+            Size = new Size(88, 34),
+            Radius = 6,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+            Enabled = false,
+        };
+        _btnAutoOpenScreenshot.Click += (_, _) => OpenSelectedAutoResultScreenshot();
+        resultHeader.Resize += (_, _) =>
+        {
+            _btnAutoOpenScreenshot.Left = Math.Max(0, resultHeader.ClientSize.Width - _btnAutoOpenScreenshot.Width);
+            _lblAutoStats.Left = Math.Max(
+                ScalePixel(240),
+                _btnAutoOpenScreenshot.Left - _lblAutoStats.Width - ScalePixel(8));
+        };
+        resultHeader.Controls.AddRange(new Control[]
+        {
+            resultTitle, _lblAutoState, _lblAutoStats, _btnAutoOpenScreenshot,
+        });
+
+        _autoResultGrid = new DataGridView
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false,
+            AllowUserToResizeRows = false,
+            MultiSelect = false,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            RowHeadersVisible = false,
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            BackgroundColor = Color.FromArgb(248, 249, 250),
+            BorderStyle = BorderStyle.FixedSingle,
+            GridColor = Color.FromArgb(232, 234, 237),
+            EnableHeadersVisualStyles = false,
+            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+            ColumnHeadersHeight = 34,
+            RowTemplate = { Height = 30 },
+            Font = new Font("Microsoft YaHei UI", 9F),
+        };
+        _autoResultGrid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(241, 243, 244);
+        _autoResultGrid.ColumnHeadersDefaultCellStyle.ForeColor = TextDarkColor;
+        _autoResultGrid.ColumnHeadersDefaultCellStyle.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
+        _autoResultGrid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(232, 240, 254);
+        _autoResultGrid.DefaultCellStyle.SelectionForeColor = TextDarkColor;
+        _autoResultGrid.Columns.AddRange(
+            new DataGridViewTextBoxColumn { Name = "Index", HeaderText = "#", FillWeight = 28 },
+            new DataGridViewTextBoxColumn { Name = "SetName", HeaderText = "套装", FillWeight = 70 },
+            new DataGridViewTextBoxColumn { Name = "Part", HeaderText = "部位", FillWeight = 42 },
+            new DataGridViewTextBoxColumn { Name = "Level", HeaderText = "等级", FillWeight = 36 },
+            new DataGridViewTextBoxColumn { Name = "Enhance", HeaderText = "强化", FillWeight = 36 },
+            new DataGridViewTextBoxColumn { Name = "Score", HeaderText = "分数", FillWeight = 42 },
+            new DataGridViewTextBoxColumn { Name = "Speed", HeaderText = "速度", FillWeight = 36 },
+            new DataGridViewTextBoxColumn { Name = "Advice", HeaderText = "建议", FillWeight = 70 },
+            new DataGridViewTextBoxColumn { Name = "Outcome", HeaderText = "结果", FillWeight = 70 },
+            new DataGridViewTextBoxColumn { Name = "Detail", HeaderText = "备注", FillWeight = 140 });
+        _autoResultGrid.SelectionChanged += (_, _) =>
+            _btnAutoOpenScreenshot.Enabled = TryGetSelectedAutoResult(out _);
+        _autoResultGrid.CellDoubleClick += (_, _) => OpenSelectedAutoResultScreenshot();
+
+        resultCard.Controls.Add(_autoResultGrid);
+        resultCard.Controls.Add(resultHeader);
+        return resultCard;
+    }
+
+    private Control CreateAutoLogCard()
+    {
         var logCard = new Panel
         {
             Dock = DockStyle.Fill,
@@ -151,22 +274,29 @@ public partial class MainForm
             Width = 88,
             TextAlign = ContentAlignment.MiddleLeft,
         };
-        _lblAutoState = new Label
+        var logModeLabel = new Label
         {
-            Text = "未开始",
-            ForeColor = AdviceNoneColor,
+            Text = "显示",
+            ForeColor = Color.FromArgb(95, 99, 104),
             Dock = DockStyle.Left,
-            Width = 150,
+            Width = 36,
             TextAlign = ContentAlignment.MiddleLeft,
         };
-        _lblAutoStats = new Label
+        _comboAutoLogMode = new AntdUI.Select
         {
-            Text = "已处理 0 · 强化装备 0 · 出售 0 · 分解 0",
-            ForeColor = Color.FromArgb(95, 99, 104),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(620, 0),
-            Size = new Size(300, 42),
-            TextAlign = ContentAlignment.MiddleRight,
+            Dock = DockStyle.Left,
+            Width = 88,
+            Radius = 6,
+            List = true,
+            ReadOnly = false,
+        };
+        _comboAutoLogMode.Items.Add("简要");
+        _comboAutoLogMode.Items.Add("详细");
+        _comboAutoLogMode.SelectedIndex = 0;
+        _comboAutoLogMode.SelectedIndexChanged += (_, _) =>
+        {
+            var mode = _comboAutoLogMode.SelectedValue as string ?? _comboAutoLogMode.Text;
+            _autoLogBriefMode = !string.Equals(mode, "详细", StringComparison.Ordinal);
         };
         _btnAutoClearLog = new AntdUI.Button
         {
@@ -181,13 +311,11 @@ public partial class MainForm
         };
         _btnAutoClearLog.Click += (_, _) => _autoLog.Clear();
         logHeader.Resize += (_, _) =>
-        {
             _btnAutoClearLog.Left = Math.Max(0, logHeader.ClientSize.Width - _btnAutoClearLog.Width);
-            _lblAutoStats.Left = Math.Max(
-                ScalePixel(250),
-                _btnAutoClearLog.Left - _lblAutoStats.Width - ScalePixel(8));
-        };
-        logHeader.Controls.AddRange(new Control[] { logTitle, _lblAutoState, _lblAutoStats, _btnAutoClearLog });
+        logHeader.Controls.AddRange(new Control[]
+        {
+            logTitle, logModeLabel, _comboAutoLogMode, _btnAutoClearLog,
+        });
 
         _autoLog = new RichTextBox
         {
@@ -203,10 +331,7 @@ public partial class MainForm
         };
         logCard.Controls.Add(_autoLog);
         logCard.Controls.Add(logHeader);
-
-        host.Controls.Add(controlCard, 0, 0);
-        host.Controls.Add(logCard, 0, 1);
-        return host;
+        return logCard;
     }
 
     private async void btnAutoStart_Click(object? sender, EventArgs e)
@@ -237,6 +362,8 @@ public partial class MainForm
         if (confirmation != DialogResult.Yes)
             return;
 
+        ClearAutoResultGrid();
+        _autoLog.Clear();
         _autoEnhanceCancellation = new CancellationTokenSource();
         var cancellationToken = _autoEnhanceCancellation.Token;
         _btnAutoStart.Enabled = false;
@@ -253,6 +380,7 @@ public partial class MainForm
         _lblAutoDevice.Text = $"目标：{session.DisplayName}";
         _lblAutoState.Text = "运行中";
         _lblAutoState.ForeColor = AdviceContinueColor;
+        _lblAutoStats.Text = FormatAutoStats(0, 0, 0, 0, 0);
         ApplyRecognitionAvailability(showHotKeySuccess: false);
 
         var options = AutoEnhancementOptions.CreateDefault(
@@ -270,8 +398,12 @@ public partial class MainForm
             ReadLegendarySpeedLadderFromControls());
         var progress = new Progress<AutoEnhancementProgress>(value =>
         {
-            AppendAutoLog(value.Level, value.Message);
-            _lblAutoStats.Text = $"已处理 {value.Processed} · 强化装备 {value.Enhanced} · 出售 {value.Sold} · 分解 {value.Extracted}";
+            if (!_autoLogBriefMode || value.VisibleInBriefMode)
+                AppendAutoLog(value.Level, value.Message);
+            if (value.Equipment != null)
+                AddAutoResultRow(value.Equipment);
+            _lblAutoStats.Text = FormatAutoStats(
+                value.Processed, value.Kept, value.Sold, value.Extracted, value.Enhanced);
         });
         var templateDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Templates");
         AutoEnhancementRunner? runner = null;
@@ -280,9 +412,13 @@ public partial class MainForm
         {
             runner = new AutoEnhancementRunner(session, templateDir, options, progress);
             var result = await runner.RunAsync(cancellationToken);
-            _lblAutoStats.Text = $"已处理 {result.Processed} · 强化装备 {result.Enhanced} · 出售 {result.Sold} · 分解 {result.Extracted}";
+            _lblAutoStats.Text = FormatAutoStats(
+                result.Processed, result.Kept, result.Sold, result.Extracted, result.Enhanced);
             _lblAutoState.Text = result.StoppedForValuableEquipment ? "已安全停止" : "已完成";
             _lblAutoState.ForeColor = result.StoppedForValuableEquipment ? AdviceGambleColor : AdviceContinueColor;
+            AppendAutoLog(
+                AutoEnhancementLogLevel.Success,
+                $"本轮结束：处理 {result.Processed} · 保留 {result.Kept} · 出售 {result.Sold} · 分解 {result.Extracted}");
             UpdateStatus(result.Message);
         }
         catch (OperationCanceledException)
@@ -304,7 +440,7 @@ public partial class MainForm
         {
             if (runner != null)
             {
-                AppendAutoEnhancementSummary(runner.GetSummary());
+                SyncAutoResultGrid(runner.GetSummary());
                 runner.Dispose();
             }
             _autoEnhanceCancellation?.Dispose();
@@ -342,29 +478,108 @@ public partial class MainForm
             ? EquipmentDisposalMethod.Extract
             : EquipmentDisposalMethod.Sell;
 
-    private void AppendAutoEnhancementSummary(AutoEnhancementSummary summary)
-    {
-        _lblAutoStats.Text =
-            $"已处理 {summary.Processed} · 强化装备 {summary.Enhanced} · 出售 {summary.Sold} · 分解 {summary.Extracted}";
-        AppendAutoLog(
-            AutoEnhancementLogLevel.Success,
-            $"任务详情：共处理 {summary.Processed} 件装备，强化了 {summary.Enhanced} 件，" +
-            $"出售 {summary.Sold} 件，分解 {summary.Extracted} 件，值得重铸 {summary.ReforgeEquipment.Count} 件");
+    private static string FormatAutoStats(int processed, int kept, int sold, int extracted, int enhanced)
+        => $"已处理 {processed} · 保留 {kept} · 出售 {sold} · 分解 {extracted} · 强化过 {enhanced}";
 
-        if (summary.ReforgeEquipment.Count == 0)
+    private void ClearAutoResultGrid()
+    {
+        if (_autoResultGrid == null || _autoResultGrid.IsDisposed)
+            return;
+        _autoResultGrid.Rows.Clear();
+        _btnAutoOpenScreenshot.Enabled = false;
+    }
+
+    private void SyncAutoResultGrid(AutoEnhancementSummary summary)
+    {
+        if (_autoResultGrid == null || _autoResultGrid.IsDisposed)
+            return;
+
+        _lblAutoStats.Text = FormatAutoStats(
+            summary.Processed, summary.Kept, summary.Sold, summary.Extracted, summary.Enhanced);
+
+        // 进度回调可能因线程时序漏行；结束时按完整清单对齐一次。
+        if (_autoResultGrid.Rows.Count == summary.Equipment.Count)
+            return;
+
+        ClearAutoResultGrid();
+        foreach (var item in summary.Equipment)
+            AddAutoResultRow(item);
+    }
+
+    private void AddAutoResultRow(AutoEnhancementEquipmentRecord record)
+    {
+        if (_autoResultGrid == null || _autoResultGrid.IsDisposed)
+            return;
+        if (_autoResultGrid.InvokeRequired)
         {
-            AppendAutoLog(AutoEnhancementLogLevel.Info, "值得重铸装备：无");
+            _autoResultGrid.BeginInvoke(() => AddAutoResultRow(record));
             return;
         }
 
-        AppendAutoLog(AutoEnhancementLogLevel.Success, "值得重铸装备列表：");
-        for (var i = 0; i < summary.ReforgeEquipment.Count; i++)
+        // 同序号只保留最后一次判定（强化过程中多阶段截图不应重复占行）。
+        for (var i = _autoResultGrid.Rows.Count - 1; i >= 0; i--)
         {
-            var equipment = summary.ReforgeEquipment[i];
-            AppendAutoLog(
-                AutoEnhancementLogLevel.Recognition,
-                $"{i + 1}. 套装：{equipment.SetName}；部位：{equipment.Part}；" +
-                $"副属性：{string.Join("，", equipment.SubStats)}");
+            if (_autoResultGrid.Rows[i].Tag is AutoEnhancementEquipmentRecord existing
+                && existing.Index == record.Index)
+            {
+                _autoResultGrid.Rows.RemoveAt(i);
+            }
+        }
+
+        var rowIndex = _autoResultGrid.Rows.Add(
+            record.Index,
+            record.SetName,
+            record.Part,
+            record.Level,
+            $"+{record.EnhanceLevel}",
+            record.Score.ToString("0.##"),
+            record.Speed,
+            record.AdviceText,
+            record.OutcomeText,
+            record.AdviceDetail);
+        var row = _autoResultGrid.Rows[rowIndex];
+        row.Tag = record;
+        row.DefaultCellStyle.ForeColor = record.Outcome switch
+        {
+            AutoEnhancementOutcome.Kept or AutoEnhancementOutcome.KeptAndStopped => AdviceContinueColor,
+            AutoEnhancementOutcome.Sold or AutoEnhancementOutcome.Extracted => AdviceGiveUpColor,
+            _ => TextDarkColor,
+        };
+        _autoResultGrid.ClearSelection();
+        row.Selected = true;
+        _autoResultGrid.FirstDisplayedScrollingRowIndex = Math.Max(0, rowIndex);
+        _btnAutoOpenScreenshot.Enabled = !string.IsNullOrWhiteSpace(record.ScreenshotPath)
+            && File.Exists(record.ScreenshotPath);
+    }
+
+    private bool TryGetSelectedAutoResult(out AutoEnhancementEquipmentRecord record)
+    {
+        record = null!;
+        if (_autoResultGrid?.CurrentRow?.Tag is AutoEnhancementEquipmentRecord selected)
+        {
+            record = selected;
+            return true;
+        }
+        return false;
+    }
+
+    private void OpenSelectedAutoResultScreenshot()
+    {
+        if (!TryGetSelectedAutoResult(out var record))
+            return;
+        if (string.IsNullOrWhiteSpace(record.ScreenshotPath) || !File.Exists(record.ScreenshotPath))
+        {
+            UpdateStatus("该结果没有可用的判定截图");
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(record.ScreenshotPath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus($"打开截图失败：{ex.Message}");
         }
     }
 
@@ -400,11 +615,10 @@ public partial class MainForm
         _autoLog.SelectionStart = _autoLog.TextLength;
         _autoLog.SelectionLength = 0;
         _autoLog.SelectionColor = color;
-        _autoLog.AppendText($"[{DateTime.Now:HH:mm:ss.fff}] [{label}] {message}{Environment.NewLine}");
+        _autoLog.AppendText($"[{DateTime.Now:HH:mm:ss}] [{label}] {message}{Environment.NewLine}");
         _autoLog.SelectionColor = _autoLog.ForeColor;
         _autoLog.ScrollToCaret();
 
-        // 防止长时间运行后日志控件无限增长。
         if (_autoLog.TextLength > 250_000)
         {
             _autoLog.Select(0, Math.Min(50_000, _autoLog.TextLength));

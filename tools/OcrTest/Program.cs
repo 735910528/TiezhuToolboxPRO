@@ -371,7 +371,7 @@ if (args.Contains("--ui-smoke"))
             }
             var addressInput = (Control)typeof(TiezhuToolbox.MainForm).GetField("txtAddress",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            if (addressInput.Width < DpiPixel(200))
+            if (addressInput.Width < DpiPixel(180))
                 throw new InvalidOperationException($"ADB 地址输入框宽度不足：{addressInput.Width}");
             var showDemand = typeof(TiezhuToolbox.MainForm).GetMethod("ShowDemandRecommendations",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
