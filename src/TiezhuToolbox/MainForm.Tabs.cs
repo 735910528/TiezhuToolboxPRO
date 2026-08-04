@@ -47,7 +47,6 @@ public partial class MainForm
 
         _equipmentTab.Controls.Add(mainTable);
         _equipmentTab.Controls.Add(pnlScreenshot);
-        _equipmentTab.Controls.Add(topPanel);
         foreach (var control in new Control[]
                  {
                      comboConnectionMode, comboDevices, txtAddress, btnConnect, btnRefresh,
@@ -91,9 +90,14 @@ public partial class MainForm
         _mainTabs.Pages.Add(_settingsTab);
         _mainTabs.SelectedIndex = 0;
         _mainTabs.SelectedIndexChanged += MainTabs_SelectedIndexChanged;
+
+        // 连接工具栏固定在窗体顶部，所有页签共享，不再嵌在「装备强化」页内。
+        topPanel.Dock = DockStyle.Top;
         Controls.Add(_mainTabs);
+        Controls.Add(topPanel);
         Controls.SetChildIndex(_mainTabs, 0);
-        Controls.SetChildIndex(statusStrip, 1);
+        Controls.SetChildIndex(topPanel, 1);
+        Controls.SetChildIndex(statusStrip, 2);
 
         LoadSettingsIntoControls();
         txtAddress.Leave += (_, _) => SaveSettingsFromControls();
@@ -105,10 +109,19 @@ public partial class MainForm
     {
         var margin = ScalePixel(12);
         var gap = ScalePixel(8);
+        var showEquipmentActions = IsEquipmentTabActive;
+        btnCaptureRecognize.Visible = showEquipmentActions;
+        btnToggleShot.Visible = showEquipmentActions;
+        btnOpenFolder.Visible = showEquipmentActions;
+
         var right = topPanel.ClientSize.Width - margin;
-        PlaceFromRight(btnCaptureRecognize, ScalePixel(112), ref right, gap);
-        PlaceFromRight(btnToggleShot, ScalePixel(92), ref right, gap);
-        PlaceFromRight(btnOpenFolder, ScalePixel(76), ref right, gap);
+        if (showEquipmentActions)
+        {
+            PlaceFromRight(btnCaptureRecognize, ScalePixel(112), ref right, gap);
+            PlaceFromRight(btnToggleShot, ScalePixel(92), ref right, gap);
+            PlaceFromRight(btnOpenFolder, ScalePixel(76), ref right, gap);
+        }
+
         PlaceFromRight(btnRefresh, ScalePixel(76), ref right, gap);
         PlaceFromRight(btnConnect, ScalePixel(76), ref right, gap);
         PlaceFromRight(txtAddress, ScalePixel(210), ref right, gap);
@@ -449,6 +462,7 @@ public partial class MainForm
 
     private void MainTabs_SelectedIndexChanged(object sender, AntdUI.IntEventArgs e)
     {
+        LayoutTopToolbar();
         ApplyRecognitionAvailability(showHotKeySuccess: false);
         if (IsEquipmentTabActive && _lastInfo != null)
         {

@@ -429,6 +429,16 @@ if (args.Contains("--ui-smoke"))
             selectedIndex.SetValue(tabs, 1);
             Application.DoEvents();
             CaptureTab("auto-enhance");
+            var topPanel = (Control)typeof(TiezhuToolbox.MainForm).GetField("topPanel",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            if (!ReferenceEquals(topPanel.Parent, form) || !topPanel.Visible)
+                throw new InvalidOperationException("连接工具栏未固定在窗体顶部");
+            var btnRefresh = (Control)typeof(TiezhuToolbox.MainForm).GetField("btnRefresh",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            var btnCaptureRecognize = (Control)typeof(TiezhuToolbox.MainForm).GetField("btnCaptureRecognize",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            if (!btnRefresh.Visible || btnCaptureRecognize.Visible)
+                throw new InvalidOperationException("非装备页应显示连接区并隐藏截图识别按钮");
             var autoStart = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoStart",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             var autoOpenLog = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoOpenLog",
@@ -585,6 +595,8 @@ if (args.Contains("--ui-smoke"))
             Application.DoEvents();
             if (!timer.Enabled)
                 throw new InvalidOperationException("返回装备页后持续识别未恢复");
+            if (!btnCaptureRecognize.Visible)
+                throw new InvalidOperationException("装备页应重新显示截图识别按钮");
             loadingField.SetValue(form, true);
             continuousCheck.GetType().GetProperty("Checked")!.SetValue(continuousCheck, false);
             loadingField.SetValue(form, false);
@@ -593,8 +605,6 @@ if (args.Contains("--ui-smoke"))
 
             if (!DemandDatabase.Instance.IsLoaded || DemandDatabase.Instance.Sets.Count != 23)
                 throw new InvalidOperationException("静态需求数据未加载");
-            var topPanel = (Control)typeof(TiezhuToolbox.MainForm).GetField("topPanel",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             Console.WriteLine($"  布局尺寸：窗体={form.ClientSize.Width}，页签={((Control)tabs).ClientSize.Width}，工具栏={topPanel.ClientSize.Width}，DPI={form.DeviceDpi}");
             form.Close();
         }
