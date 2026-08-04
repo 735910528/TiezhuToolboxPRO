@@ -76,6 +76,19 @@ partial class MainForm
             pictureBox?.Image?.Dispose();
             _ocrEngine?.Dispose();
             _applicationIcon?.Dispose();
+            if (_autoLogForm != null && !_autoLogForm.IsDisposed)
+            {
+                _autoLogFormAllowClose = true;
+                _autoLogForm.Close();
+                _autoLogForm.Dispose();
+                _autoLogForm = null;
+            }
+
+            if (_autoLog != null && !_autoLog.IsDisposed)
+            {
+                _autoLog.Dispose();
+                _autoLog = null!;
+            }
         }
 
         base.Dispose(disposing);

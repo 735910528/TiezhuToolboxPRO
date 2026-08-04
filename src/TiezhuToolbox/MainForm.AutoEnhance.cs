@@ -9,6 +9,7 @@ public partial class MainForm
     private AntdUI.Button _btnAutoStart = null!;
     private AntdUI.Button _btnAutoStop = null!;
     private AntdUI.Button _btnAutoClearLog = null!;
+    private AntdUI.Button _btnAutoOpenLog = null!;
     private AntdUI.Button _btnAutoOpenScreenshot = null!;
     private AntdUI.InputNumber _numAutoMaxEquipment = null!;
     private AntdUI.Select _comboAutoDisposalMethod = null!;
@@ -23,14 +24,14 @@ public partial class MainForm
     private AntdUI.InputNumber _numLegendarySpeedPlus12 = null!;
     private AntdUI.InputNumber _numLegendarySpeedPlus15 = null!;
     private AntdUI.InputNumber _numLegendarySpeedFinal = null!;
-    private AntdUI.Select _comboAutoLogMode = null!;
     private Label _lblAutoDevice = null!;
     private Label _lblAutoState = null!;
     private Label _lblAutoStats = null!;
     private DataGridView _autoResultGrid = null!;
     private RichTextBox _autoLog = null!;
+    private Form? _autoLogForm;
+    private bool _autoLogFormAllowClose;
     private CancellationTokenSource? _autoEnhanceCancellation;
-    private bool _autoLogBriefMode = true;
 
     private bool IsAutoEnhancing => _autoEnhanceCancellation != null;
 
@@ -42,12 +43,11 @@ public partial class MainForm
             BackColor = Color.FromArgb(245, 246, 248),
             Padding = new Padding(24),
             ColumnCount = 1,
-            RowCount = 3,
+            RowCount = 2,
         };
         host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         host.RowStyles.Add(new RowStyle(SizeType.Absolute, 176));
-        host.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
-        host.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
+        host.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         var controlCard = new Panel
         {
@@ -140,12 +140,9 @@ public partial class MainForm
             title, hint, warning, _lblAutoDevice, _btnAutoStart, _btnAutoStop,
         });
 
-        var resultCard = CreateAutoResultCard();
-        var logCard = CreateAutoLogCard();
-
+        EnsureAutoLogControl();
         host.Controls.Add(controlCard, 0, 0);
-        host.Controls.Add(resultCard, 0, 1);
-        host.Controls.Add(logCard, 0, 2);
+        host.Controls.Add(CreateAutoResultCard(), 0, 1);
         return host;
     }
 
@@ -156,7 +153,7 @@ public partial class MainForm
             Dock = DockStyle.Fill,
             BackColor = Color.White,
             Padding = new Padding(18),
-            Margin = new Padding(0, 0, 0, 14),
+            Margin = Padding.Empty,
         };
         var resultHeader = new Panel { Dock = DockStyle.Top, Height = 42 };
         var resultTitle = new Label
@@ -173,7 +170,7 @@ public partial class MainForm
             Text = "未开始",
             ForeColor = AdviceNoneColor,
             Dock = DockStyle.Left,
-            Width = 150,
+            Width = 120,
             TextAlign = ContentAlignment.MiddleLeft,
         };
         _lblAutoStats = new Label
@@ -181,10 +178,22 @@ public partial class MainForm
             Text = FormatAutoStats(0, 0, 0, 0, 0),
             ForeColor = Color.FromArgb(95, 99, 104),
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(420, 0),
-            Size = new Size(420, 42),
+            Location = new Point(300, 0),
+            Size = new Size(400, 42),
             TextAlign = ContentAlignment.MiddleRight,
         };
+        _btnAutoOpenLog = new AntdUI.Button
+        {
+            Text = "过程日志",
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Location = new Point(760, 4),
+            Size = new Size(88, 34),
+            Radius = 6,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+        };
+        _btnAutoOpenLog.Click += (_, _) => ShowAutoLogWindow();
         _btnAutoOpenScreenshot = new AntdUI.Button
         {
             Text = "打开截图",
@@ -201,13 +210,14 @@ public partial class MainForm
         resultHeader.Resize += (_, _) =>
         {
             _btnAutoOpenScreenshot.Left = Math.Max(0, resultHeader.ClientSize.Width - _btnAutoOpenScreenshot.Width);
+            _btnAutoOpenLog.Left = Math.Max(0, _btnAutoOpenScreenshot.Left - _btnAutoOpenLog.Width - ScalePixel(8));
             _lblAutoStats.Left = Math.Max(
-                ScalePixel(240),
-                _btnAutoOpenScreenshot.Left - _lblAutoStats.Width - ScalePixel(8));
+                ScalePixel(220),
+                _btnAutoOpenLog.Left - _lblAutoStats.Width - ScalePixel(8));
         };
         resultHeader.Controls.AddRange(new Control[]
         {
-            resultTitle, _lblAutoState, _lblAutoStats, _btnAutoOpenScreenshot,
+            resultTitle, _lblAutoState, _lblAutoStats, _btnAutoOpenLog, _btnAutoOpenScreenshot,
         });
 
         _autoResultGrid = new DataGridView
@@ -255,67 +265,10 @@ public partial class MainForm
         return resultCard;
     }
 
-    private Control CreateAutoLogCard()
+    private void EnsureAutoLogControl()
     {
-        var logCard = new Panel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = Color.White,
-            Padding = new Padding(18),
-            Margin = Padding.Empty,
-        };
-        var logHeader = new Panel { Dock = DockStyle.Top, Height = 42 };
-        var logTitle = new Label
-        {
-            Text = "过程日志",
-            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
-            ForeColor = TextDarkColor,
-            Dock = DockStyle.Left,
-            Width = 88,
-            TextAlign = ContentAlignment.MiddleLeft,
-        };
-        var logModeLabel = new Label
-        {
-            Text = "显示",
-            ForeColor = Color.FromArgb(95, 99, 104),
-            Dock = DockStyle.Left,
-            Width = 36,
-            TextAlign = ContentAlignment.MiddleLeft,
-        };
-        _comboAutoLogMode = new AntdUI.Select
-        {
-            Dock = DockStyle.Left,
-            Width = 88,
-            Radius = 6,
-            List = true,
-            ReadOnly = false,
-        };
-        _comboAutoLogMode.Items.Add("简要");
-        _comboAutoLogMode.Items.Add("详细");
-        _comboAutoLogMode.SelectedIndex = 0;
-        _comboAutoLogMode.SelectedIndexChanged += (_, _) =>
-        {
-            var mode = _comboAutoLogMode.SelectedValue as string ?? _comboAutoLogMode.Text;
-            _autoLogBriefMode = !string.Equals(mode, "详细", StringComparison.Ordinal);
-        };
-        _btnAutoClearLog = new AntdUI.Button
-        {
-            Text = "清空日志",
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(858, 4),
-            Size = new Size(88, 34),
-            Radius = 6,
-            BorderWidth = 1,
-            DefaultBack = Color.White,
-            DefaultBorderColor = Color.FromArgb(218, 220, 224),
-        };
-        _btnAutoClearLog.Click += (_, _) => _autoLog.Clear();
-        logHeader.Resize += (_, _) =>
-            _btnAutoClearLog.Left = Math.Max(0, logHeader.ClientSize.Width - _btnAutoClearLog.Width);
-        logHeader.Controls.AddRange(new Control[]
-        {
-            logTitle, logModeLabel, _comboAutoLogMode, _btnAutoClearLog,
-        });
+        if (_autoLog != null && !_autoLog.IsDisposed)
+            return;
 
         _autoLog = new RichTextBox
         {
@@ -329,9 +282,92 @@ public partial class MainForm
             WordWrap = true,
             ScrollBars = RichTextBoxScrollBars.Vertical,
         };
-        logCard.Controls.Add(_autoLog);
-        logCard.Controls.Add(logHeader);
-        return logCard;
+    }
+
+    private void ShowAutoLogWindow()
+    {
+        EnsureAutoLogControl();
+        if (_autoLogForm != null && !_autoLogForm.IsDisposed)
+        {
+            if (_autoLogForm.WindowState == FormWindowState.Minimized)
+                _autoLogForm.WindowState = FormWindowState.Normal;
+            _autoLogForm.Show();
+            _autoLogForm.BringToFront();
+            _autoLogForm.Activate();
+            return;
+        }
+
+        _btnAutoClearLog = new AntdUI.Button
+        {
+            Text = "清空",
+            Size = new Size(76, 32),
+            Radius = 6,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+        };
+        _btnAutoClearLog.Click += (_, _) =>
+        {
+            if (_autoLog != null && !_autoLog.IsDisposed)
+                _autoLog.Clear();
+        };
+
+        var header = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 48,
+            Padding = new Padding(12, 8, 12, 8),
+        };
+        var title = new Label
+        {
+            Text = "自动强化 · 过程日志",
+            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
+            ForeColor = TextDarkColor,
+            AutoSize = true,
+            Location = new Point(12, 12),
+        };
+        header.Controls.Add(title);
+        header.Controls.Add(_btnAutoClearLog);
+        header.Resize += (_, _) =>
+            _btnAutoClearLog.Location = new Point(
+                Math.Max(12, header.ClientSize.Width - _btnAutoClearLog.Width - 12),
+                8);
+
+        var body = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(12, 0, 12, 12),
+        };
+        if (_autoLog.Parent != null)
+            _autoLog.Parent.Controls.Remove(_autoLog);
+        body.Controls.Add(_autoLog);
+
+        _autoLogForm = new Form
+        {
+            Text = "过程日志",
+            StartPosition = FormStartPosition.CenterParent,
+            Size = new Size(780, 520),
+            MinimumSize = new Size(480, 320),
+            ShowInTaskbar = false,
+            MinimizeBox = true,
+            MaximizeBox = true,
+            Owner = this,
+        };
+        if (Icon != null)
+            _autoLogForm.Icon = Icon;
+        _autoLogForm.Controls.Add(body);
+        _autoLogForm.Controls.Add(header);
+        _autoLogFormAllowClose = false;
+        _autoLogForm.FormClosing += (_, e) =>
+        {
+            if (!_autoLogFormAllowClose && e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                _autoLogForm.Hide();
+            }
+        };
+        _autoLogForm.Show(this);
     }
 
     private async void btnAutoStart_Click(object? sender, EventArgs e)
@@ -363,7 +399,8 @@ public partial class MainForm
             return;
 
         ClearAutoResultGrid();
-        _autoLog.Clear();
+        if (_autoLog != null && !_autoLog.IsDisposed)
+            _autoLog.Clear();
         _autoEnhanceCancellation = new CancellationTokenSource();
         var cancellationToken = _autoEnhanceCancellation.Token;
         _btnAutoStart.Enabled = false;
@@ -398,8 +435,7 @@ public partial class MainForm
             ReadLegendarySpeedLadderFromControls());
         var progress = new Progress<AutoEnhancementProgress>(value =>
         {
-            if (!_autoLogBriefMode || value.VisibleInBriefMode)
-                AppendAutoLog(value.Level, value.Message);
+            AppendAutoLog(value.Level, value.Message);
             if (value.Equipment != null)
                 AddAutoResultRow(value.Equipment);
             _lblAutoStats.Text = FormatAutoStats(
@@ -585,8 +621,7 @@ public partial class MainForm
 
     private void AppendAutoLog(AutoEnhancementLogLevel level, string message)
     {
-        if (_autoLog == null || _autoLog.IsDisposed)
-            return;
+        EnsureAutoLogControl();
         if (_autoLog.InvokeRequired)
         {
             _autoLog.BeginInvoke(() => AppendAutoLog(level, message));

@@ -431,13 +431,15 @@ if (args.Contains("--ui-smoke"))
             CaptureTab("auto-enhance");
             var autoStart = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoStart",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            var autoLog = (RichTextBox)typeof(TiezhuToolbox.MainForm).GetField("_autoLog",
+            var autoOpenLog = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoOpenLog",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            if (!autoStart.Enabled || !autoLog.ReadOnly || timer.Enabled)
+            var autoResultGrid = (DataGridView)typeof(TiezhuToolbox.MainForm).GetField("_autoResultGrid",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            if (!autoStart.Enabled || !autoOpenLog.Enabled || autoResultGrid.ColumnCount < 8 || timer.Enabled)
                 throw new InvalidOperationException("自动强化页初始状态不正确");
-            if (autoLog.Right < autoLog.Parent!.ClientSize.Width - autoLog.Parent.Padding.Right - 2)
+            if (autoResultGrid.Right < autoResultGrid.Parent!.ClientSize.Width - autoResultGrid.Parent.Padding.Right - 2)
                 throw new InvalidOperationException(
-                    $"自动强化日志未填满内容区：日志={autoLog.Bounds}，父容器={autoLog.Parent.ClientSize}");
+                    $"自动强化结果表未填满内容区：表格={autoResultGrid.Bounds}，父容器={autoResultGrid.Parent.ClientSize}");
 
             selectedIndex.SetValue(tabs, 2);
             Application.DoEvents();
