@@ -41,6 +41,7 @@ public partial class MainForm
         };
         _equipmentTab = new AntdUI.TabPage { Text = "装备强化", BackColor = Color.White };
         _autoEnhanceTab = new AntdUI.TabPage { Text = "自动强化", BackColor = Color.FromArgb(245, 246, 248) };
+        _gearExportTab = new AntdUI.TabPage { Text = "装备导出", BackColor = Color.FromArgb(245, 246, 248) };
         _starForgeTab = new AntdUI.TabPage { Text = "星之铁匠铺", BackColor = Color.FromArgb(245, 246, 248) };
         var demandTab = new AntdUI.TabPage { Text = "需求分析", BackColor = Color.White };
         _settingsTab = new AntdUI.TabPage { Text = "软件设置", BackColor = Color.FromArgb(245, 246, 248) };
@@ -75,6 +76,10 @@ public partial class MainForm
         _autoEnhanceTab.Controls.Add(autoEnhanceContent);
         ScaleRuntimePage(autoEnhanceContent);
 
+        var gearExportContent = CreateGearExportContent();
+        _gearExportTab.Controls.Add(gearExportContent);
+        ScaleRuntimePage(gearExportContent);
+
         var starForgeContent = CreateStarForgeContent();
         _starForgeTab.Controls.Add(starForgeContent);
         ScaleRuntimePage(starForgeContent);
@@ -85,6 +90,7 @@ public partial class MainForm
 
         _mainTabs.Pages.Add(_equipmentTab);
         _mainTabs.Pages.Add(_autoEnhanceTab);
+        _mainTabs.Pages.Add(_gearExportTab);
         _mainTabs.Pages.Add(_starForgeTab);
         _mainTabs.Pages.Add(demandTab);
         _mainTabs.Pages.Add(_settingsTab);
@@ -492,6 +498,7 @@ public partial class MainForm
     {
         _autoEnhanceCancellation?.Cancel();
         _starForgeCancellation?.Cancel();
+        _gearScanner?.Dispose();
         _autoEnhanceSettingsFormAllowClose = true;
         _autoLogFormAllowClose = true;
         if (_autoEnhanceSettingsForm != null && !_autoEnhanceSettingsForm.IsDisposed)

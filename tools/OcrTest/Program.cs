@@ -307,7 +307,7 @@ if (args.Contains("--ui-smoke"))
                 ?? throw new InvalidOperationException("未找到主页签");
             var tabs = tabsField.GetValue(form) ?? throw new InvalidOperationException("主页签未初始化");
             var pages = tabs.GetType().GetProperty("Pages")?.GetValue(tabs) as System.Collections.ICollection;
-            if (pages?.Count != 5)
+            if (pages?.Count != 6)
                 throw new InvalidOperationException($"页签数量错误：{pages?.Count}");
 
             var selectedIndex = tabs.GetType().GetProperty("SelectedIndex")!;
@@ -371,8 +371,13 @@ if (args.Contains("--ui-smoke"))
             }
             var addressInput = (Control)typeof(TiezhuToolbox.MainForm).GetField("txtAddress",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            if (addressInput.Width < DpiPixel(180))
-                throw new InvalidOperationException($"ADB 地址输入框宽度不足：{addressInput.Width}");
+            typeof(TiezhuToolbox.MainForm).GetMethod("LayoutTopToolbar",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(form, null);
+            Application.DoEvents();
+            if (addressInput.Width < 180)
+                throw new InvalidOperationException(
+                    $"ADB 地址输入框宽度不足：{addressInput.Width}（DPI={form.DeviceDpi}）");
             var showDemand = typeof(TiezhuToolbox.MainForm).GetMethod("ShowDemandRecommendations",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 ?? throw new InvalidOperationException("找不到套装需求展示方法");
@@ -457,17 +462,29 @@ if (args.Contains("--ui-smoke"))
             Application.DoEvents();
             if ((int)selectedIndex.GetValue(tabs)! != 1)
                 throw new InvalidOperationException("强化设置弹窗不应切换页签");
-            var autoSettingsForm = (Form?)typeof(TiezhuToolbox.MainForm).GetField("_autoEnhanceSettingsForm",
+            var openedAutoSettingsForm = (Form?)typeof(TiezhuToolbox.MainForm).GetField("_autoEnhanceSettingsForm",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form);
-            if (autoSettingsForm == null || !autoSettingsForm.Visible)
+            if (openedAutoSettingsForm == null || !openedAutoSettingsForm.Visible)
                 throw new InvalidOperationException("强化设置入口未打开设置弹窗");
-            autoSettingsForm.Hide();
+            openedAutoSettingsForm.Hide();
             Application.DoEvents();
             if (autoResultGrid.Right < autoResultGrid.Parent!.ClientSize.Width - autoResultGrid.Parent.Padding.Right - 2)
                 throw new InvalidOperationException(
                     $"自动强化结果表未填满内容区：表格={autoResultGrid.Bounds}，父容器={autoResultGrid.Parent.ClientSize}");
 
             selectedIndex.SetValue(tabs, 2);
+            Application.DoEvents();
+            CaptureTab("gear-export");
+            var gearScanStart = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnGearScanStart",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            var gearScanStop = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnGearScanStop",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            var gearExportFile = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnGearExportFile",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            if (!gearScanStart.Enabled || gearScanStop.Enabled || gearExportFile.Enabled || timer.Enabled)
+                throw new InvalidOperationException("装备导出页初始状态不正确");
+
+            selectedIndex.SetValue(tabs, 3);
             Application.DoEvents();
             CaptureTab("star-forge");
             var starForgeStart = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnStarForgeStart",
@@ -482,7 +499,7 @@ if (args.Contains("--ui-smoke"))
             if (starForgeLog.Right < starForgeLog.Parent!.ClientSize.Width - starForgeLog.Parent.Padding.Right - 2)
                 throw new InvalidOperationException("星之铁匠铺日志未填满内容区");
 
-            selectedIndex.SetValue(tabs, 3);
+            selectedIndex.SetValue(tabs, 4);
             Application.DoEvents();
             CaptureTab("demand-analysis");
             var demandBrowser = typeof(TiezhuToolbox.MainForm).GetField("_demandBrowserControl",
@@ -538,7 +555,7 @@ if (args.Contains("--ui-smoke"))
                 throw new InvalidOperationException("需求子类开关没有更新匹配过滤配置");
             if (timer.Enabled)
                 throw new InvalidOperationException("离开装备页后持续识别仍在运行");
-            selectedIndex.SetValue(tabs, 4);
+            selectedIndex.SetValue(tabs, 5);
             Application.DoEvents();
             var settingInputs = new[] { "numLeftThreshold", "numRightThreshold", "numLevel88Threshold", "comboRecognitionHotKey", "numRecognitionInterval" }
                 .Select(name => (Control)typeof(TiezhuToolbox.MainForm).GetField(name,
@@ -571,8 +588,20 @@ if (args.Contains("--ui-smoke"))
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             var heroicOnlySpeedCheck = (Control)typeof(TiezhuToolbox.MainForm).GetField("_chkHeroicOnlyGambleSpeed",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            if (heroicOnlySpeedCheck.Width < DpiPixel(400) || heroicOnlySpeedCheck.Height < DpiPixel(32))
-                throw new InvalidOperationException("紫装只赌速度设置项尺寸不足");
+            // 该控件在强化设置弹窗中，首次打开前可能尚未按显示器 DPI 缩放。
+            if (heroicOnlySpeedCheck.Width < 400 || heroicOnlySpeedCheck.Height < 32)
+                throw new InvalidOperationException(
+                    $"紫装只赌速度设置项尺寸不足：{heroicOnlySpeedCheck.Size}");
+            typeof(TiezhuToolbox.MainForm).GetMethod("ShowAutoEnhanceSettingsWindow",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(form, null);
+            Application.DoEvents();
+            var settingsAutoForm = (Form?)typeof(TiezhuToolbox.MainForm).GetField("_autoEnhanceSettingsForm",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form);
+            if (settingsAutoForm == null || !settingsAutoForm.Visible)
+                throw new InvalidOperationException("软件设置页无法打开自动强化设置弹窗");
+            settingsAutoForm.Hide();
+            Application.DoEvents();
             var requiredRuleTexts = new[]
                 {
                     "红装赌速度", "紫装只赌速度", "速度套速度规则", "暴击项链规则",
@@ -622,7 +651,7 @@ if (args.Contains("--ui-smoke"))
         throw new TimeoutException("界面冒烟测试超时");
     if (uiError != null)
         throw new InvalidOperationException("界面冒烟测试失败", uiError);
-    Console.WriteLine("界面冒烟测试通过：5 个页签，23 个套装需求");
+    Console.WriteLine("界面冒烟测试通过：6 个页签，23 个套装需求");
     return;
 }
 
