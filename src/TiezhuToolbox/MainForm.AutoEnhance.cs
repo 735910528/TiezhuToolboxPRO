@@ -8,6 +8,7 @@ public partial class MainForm
 {
     private AntdUI.TabPage _autoEnhanceTab = null!;
     private AntdUI.Button _btnAutoStart = null!;
+    private AntdUI.Button _btnAutoOrganize = null!;
     private AntdUI.Button _btnAutoStop = null!;
     private AntdUI.Button _btnAutoOpenSettings = null!;
     private AntdUI.Button _btnAutoClearLog = null!;
@@ -85,7 +86,7 @@ public partial class MainForm
         };
         var warning = new Label
         {
-            Text = "注意：淘汰装备会按设置出售或分解；符合保留条件时按设置停止，或返回背包继续下一件。",
+            Text = "注意：自动强化会按设置出售/分解淘汰装；「开始整理」只出售放弃类建议，绝不强化。",
             ForeColor = AdviceGiveUpColor,
             Font = new Font("Microsoft YaHei UI", 9.75F, FontStyle.Bold),
             Location = new Point(24, 83),
@@ -99,7 +100,7 @@ public partial class MainForm
             Text = "目标：跟随顶部 ADB/窗口选择",
             ForeColor = TextDarkColor,
             Location = new Point(24, 123),
-            Size = new Size(240, 34),
+            Size = new Size(200, 34),
             TextAlign = ContentAlignment.MiddleLeft,
             AutoEllipsis = true,
         };
@@ -107,7 +108,7 @@ public partial class MainForm
         {
             Text = "强化设置",
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(600, 123),
+            Location = new Point(480, 123),
             Size = new Size(96, 34),
             Radius = 6,
             BorderWidth = 1,
@@ -115,23 +116,36 @@ public partial class MainForm
             DefaultBorderColor = Color.FromArgb(218, 220, 224),
         };
         _btnAutoOpenSettings.Click += (_, _) => ShowAutoEnhanceSettingsWindow();
+        _btnAutoOrganize = new AntdUI.Button
+        {
+            Text = "开始整理",
+            Font = new Font("Microsoft YaHei UI", 9.75F, FontStyle.Bold),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Location = new Point(584, 123),
+            Size = new Size(108, 34),
+            Radius = 6,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+        };
+        _btnAutoOrganize.Click += async (_, _) => await StartAutoRunAsync(AutoRunMode.OrganizeSellOnly);
         _btnAutoStart = new AntdUI.Button
         {
             Text = "开始自动强化",
             Font = new Font("Microsoft YaHei UI", 9.75F, FontStyle.Bold),
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(708, 123),
+            Location = new Point(700, 123),
             Size = new Size(132, 34),
             Radius = 6,
             Type = AntdUI.TTypeMini.Primary,
         };
-        _btnAutoStart.Click += btnAutoStart_Click;
+        _btnAutoStart.Click += async (_, _) => await StartAutoRunAsync(AutoRunMode.Enhance);
 
         _btnAutoStop = new AntdUI.Button
         {
             Text = "停止",
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(848, 123),
+            Location = new Point(840, 123),
             Size = new Size(88, 34),
             Radius = 6,
             Enabled = false,
@@ -155,14 +169,16 @@ public partial class MainForm
             warning.Width = Math.Max(ScalePixel(300), controlCard.ClientSize.Width - ScalePixel(48));
             _btnAutoStop.Left = controlCard.ClientSize.Width - ScalePixel(110);
             _btnAutoStart.Left = _btnAutoStop.Left - ScalePixel(140);
-            _btnAutoOpenSettings.Left = _btnAutoStart.Left - ScalePixel(104);
+            _btnAutoOrganize.Left = _btnAutoStart.Left - ScalePixel(116);
+            _btnAutoOpenSettings.Left = _btnAutoOrganize.Left - ScalePixel(104);
             _lblAutoDevice.Width = Math.Max(
-                ScalePixel(120),
+                ScalePixel(100),
                 _btnAutoOpenSettings.Left - _lblAutoDevice.Left - ScalePixel(12));
         };
         controlCard.Controls.AddRange(new Control[]
         {
-            title, hint, warning, _lblAutoDevice, _btnAutoOpenSettings, _btnAutoStart, _btnAutoStop,
+            title, hint, warning, _lblAutoDevice, _btnAutoOpenSettings,
+            _btnAutoOrganize, _btnAutoStart, _btnAutoStop,
         });
 
         EnsureAutoLogControl();
@@ -217,6 +233,7 @@ public partial class MainForm
         _comboAutoResultFilter.Items.Add("全部");
         _comboAutoResultFilter.Items.Add("保留");
         _comboAutoResultFilter.Items.Add("出售");
+        _comboAutoResultFilter.Items.Add("跳过");
         _comboAutoResultFilter.Items.Add("分解");
         _comboAutoResultFilter.SelectedIndex = 0;
         _comboAutoResultFilter.SelectedIndexChanged += (_, _) =>
@@ -227,7 +244,7 @@ public partial class MainForm
         };
         _lblAutoStats = new Label
         {
-            Text = FormatAutoStats(0, 0, 0, 0, 0),
+            Text = FormatAutoStats(0, 0, 0, 0, 0, 0),
             ForeColor = Color.FromArgb(95, 99, 104),
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
             Location = new Point(300, 0),
@@ -678,7 +695,7 @@ public partial class MainForm
         _autoEnhanceSettingsForm.Show(this);
     }
 
-    private async void btnAutoStart_Click(object? sender, EventArgs e)
+    private async Task StartAutoRunAsync(AutoRunMode mode)
     {
         if (IsAutomationRunning)
             return;
@@ -689,17 +706,25 @@ public partial class MainForm
             return;
         }
 
-        var disposalMethod = GetSelectedDisposalMethod();
+        var organize = mode == AutoRunMode.OrganizeSellOnly;
+        var disposalMethod = organize ? EquipmentDisposalMethod.Sell : GetSelectedDisposalMethod();
         var disposalName = disposalMethod == EquipmentDisposalMethod.Sell ? "出售" : "分解";
         var confirmation = MessageBox.Show(
             this,
-            $"自动强化会永久{disposalName}不符合当前强化建议的装备。\r\n\r\n" +
-            "开始前请确认：\r\n" +
-            "1. 游戏已停在背包装备列表，并已选中准备处理的第一件装备；\r\n" +
-            "2. 已勾选“隐藏已配戴装备”；\r\n" +
-            "3. 已勾选“隐藏MAX强化装备”。\r\n\r\n" +
-            "以上设置均已完成，是否开始？",
-            "确认开始自动强化",
+            organize
+                ? "装备整理只会按强化建议出售「放弃」类装备，不会进行任何强化。\r\n\r\n" +
+                  "开始前请确认：\r\n" +
+                  "1. 游戏已停在背包装备列表，并已选中准备处理的第一件装备；\r\n" +
+                  "2. 已勾选“隐藏已配戴装备”；\r\n" +
+                  "3. 已勾选“隐藏MAX强化装备”。\r\n\r\n" +
+                  "以上设置均已完成，是否开始整理？"
+                : $"自动强化会永久{disposalName}不符合当前强化建议的装备。\r\n\r\n" +
+                  "开始前请确认：\r\n" +
+                  "1. 游戏已停在背包装备列表，并已选中准备处理的第一件装备；\r\n" +
+                  "2. 已勾选“隐藏已配戴装备”；\r\n" +
+                  "3. 已勾选“隐藏MAX强化装备”。\r\n\r\n" +
+                  "以上设置均已完成，是否开始？",
+            organize ? "确认开始装备整理" : "确认开始自动强化",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning,
             MessageBoxDefaultButton.Button2);
@@ -713,6 +738,7 @@ public partial class MainForm
         _autoEnhanceCancellation = new CancellationTokenSource();
         var cancellationToken = _autoEnhanceCancellation.Token;
         _btnAutoStart.Enabled = false;
+        _btnAutoOrganize.Enabled = false;
         _btnStarForgeStart.Enabled = false;
         _btnAutoStop.Enabled = true;
         _numAutoMaxEquipment.Enabled = false;
@@ -724,9 +750,9 @@ public partial class MainForm
         _chkCriticalNecklaceMainStatRule.Enabled = false;
         SetLegendarySpeedInputsEnabled(false);
         _lblAutoDevice.Text = $"目标：{session.DisplayName}";
-        _lblAutoState.Text = "运行中";
+        _lblAutoState.Text = organize ? "整理中" : "运行中";
         _lblAutoState.ForeColor = AdviceContinueColor;
-        _lblAutoStats.Text = FormatAutoStats(0, 0, 0, 0, 0);
+        _lblAutoStats.Text = FormatAutoStats(0, 0, 0, 0, 0, 0);
         ApplyRecognitionAvailability(showHotKeySuccess: false);
 
         var options = AutoEnhancementOptions.CreateDefault(
@@ -736,19 +762,20 @@ public partial class MainForm
             (double)numLevel88Threshold.Value,
             (double)_numHeroMatchThreshold.Value,
             disposalMethod,
-            _chkAutoStopOnValuableEquipment.Checked,
+            organize ? false : _chkAutoStopOnValuableEquipment.Checked,
             _chkHeroicOnlyGambleSpeed.Checked,
             _chkSpeedSetRequiresSpeed.Checked,
             _chkCriticalNecklaceMainStatRule.Checked,
             _disabledDemandProfiles,
-            ReadLegendarySpeedLadderFromControls());
+            ReadLegendarySpeedLadderFromControls(),
+            mode);
         var progress = new Progress<AutoEnhancementProgress>(value =>
         {
             AppendAutoLog(value.Level, value.Message);
             if (value.Equipment != null)
                 AddAutoResultRow(value.Equipment);
             _lblAutoStats.Text = FormatAutoStats(
-                value.Processed, value.Kept, value.Sold, value.Extracted, value.Enhanced);
+                value.Processed, value.Kept, value.Sold, value.Extracted, value.Enhanced, value.Skipped);
         });
         var templateDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Templates");
         AutoEnhancementRunner? runner = null;
@@ -758,28 +785,31 @@ public partial class MainForm
             runner = new AutoEnhancementRunner(session, templateDir, options, progress);
             var result = await runner.RunAsync(cancellationToken);
             _lblAutoStats.Text = FormatAutoStats(
-                result.Processed, result.Kept, result.Sold, result.Extracted, result.Enhanced);
+                result.Processed, result.Kept, result.Sold, result.Extracted, result.Enhanced, result.Skipped);
             _lblAutoState.Text = result.StoppedForValuableEquipment ? "已安全停止" : "已完成";
             _lblAutoState.ForeColor = result.StoppedForValuableEquipment ? AdviceGambleColor : AdviceContinueColor;
             AppendAutoLog(
                 AutoEnhancementLogLevel.Success,
-                $"本轮结束：处理 {result.Processed} · 保留 {result.Kept} · 出售 {result.Sold} · 分解 {result.Extracted}");
+                organize
+                    ? $"本轮整理结束：处理 {result.Processed} · 出售 {result.Sold} · 跳过 {result.Skipped}"
+                    : $"本轮结束：处理 {result.Processed} · 保留 {result.Kept} · 出售 {result.Sold} · 分解 {result.Extracted}");
             UpdateStatus(result.Message);
         }
         catch (OperationCanceledException)
         {
             _lblAutoState.Text = "已停止";
             _lblAutoState.ForeColor = AdviceGambleColor;
-            AppendAutoLog(AutoEnhancementLogLevel.Warning, "自动强化已由用户停止");
-            UpdateStatus("自动强化已停止");
+            AppendAutoLog(AutoEnhancementLogLevel.Warning,
+                organize ? "装备整理已由用户停止" : "自动强化已由用户停止");
+            UpdateStatus(organize ? "装备整理已停止" : "自动强化已停止");
         }
         catch (Exception ex)
         {
             _lblAutoState.Text = "发生错误，已停机";
             _lblAutoState.ForeColor = AdviceGiveUpColor;
             AppendAutoLog(AutoEnhancementLogLevel.Error, ex.Message);
-            WriteDebugLog($"自动强化失败：{ex}");
-            UpdateStatus($"自动强化已停止：{ex.Message}");
+            WriteDebugLog($"{(organize ? "装备整理" : "自动强化")}失败：{ex}");
+            UpdateStatus($"{(organize ? "装备整理" : "自动强化")}已停止：{ex.Message}");
         }
         finally
         {
@@ -793,6 +823,7 @@ public partial class MainForm
             if (!IsDisposed)
             {
                 _btnAutoStart.Enabled = true;
+                _btnAutoOrganize.Enabled = true;
                 _btnStarForgeStart.Enabled = true;
                 _btnAutoStop.Enabled = false;
                 _numAutoMaxEquipment.Enabled = true;
@@ -823,8 +854,9 @@ public partial class MainForm
             ? EquipmentDisposalMethod.Extract
             : EquipmentDisposalMethod.Sell;
 
-    private static string FormatAutoStats(int processed, int kept, int sold, int extracted, int enhanced)
-        => $"已处理 {processed} · 保留 {kept} · 出售 {sold} · 分解 {extracted} · 强化过 {enhanced}";
+    private static string FormatAutoStats(
+        int processed, int kept, int sold, int extracted, int enhanced, int skipped)
+        => $"已处理 {processed} · 保留 {kept} · 出售 {sold} · 跳过 {skipped} · 分解 {extracted} · 强化过 {enhanced}";
 
     private void ClearAutoResultGrid()
     {
@@ -861,6 +893,7 @@ public partial class MainForm
             "保留" => record.Outcome is AutoEnhancementOutcome.Kept
                 or AutoEnhancementOutcome.KeptAndStopped,
             "出售" => record.Outcome == AutoEnhancementOutcome.Sold,
+            "跳过" => record.Outcome == AutoEnhancementOutcome.Skipped,
             "分解" => record.Outcome == AutoEnhancementOutcome.Extracted,
             _ => true,
         };
@@ -871,7 +904,7 @@ public partial class MainForm
             return;
 
         _lblAutoStats.Text = FormatAutoStats(
-            summary.Processed, summary.Kept, summary.Sold, summary.Extracted, summary.Enhanced);
+            summary.Processed, summary.Kept, summary.Sold, summary.Extracted, summary.Enhanced, summary.Skipped);
 
         // 进度回调可能因线程时序漏行；结束时按完整清单对齐一次。
         if (_autoResultRecords.Count == summary.Equipment.Count
@@ -958,6 +991,7 @@ public partial class MainForm
         {
             AutoEnhancementOutcome.Kept or AutoEnhancementOutcome.KeptAndStopped => AdviceContinueColor,
             AutoEnhancementOutcome.Sold or AutoEnhancementOutcome.Extracted => AdviceGiveUpColor,
+            AutoEnhancementOutcome.Skipped => AdviceGambleColor,
             _ => TextDarkColor,
         };
     }

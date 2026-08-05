@@ -333,6 +333,7 @@ public partial class MainForm
         SetStarForgeControlsEnabled(false);
         _btnStarForgeStop.Enabled = true;
         _btnAutoStart.Enabled = false;
+        _btnAutoOrganize.Enabled = false;
         _lblStarForgeDevice.Text = $"目标：{session.DisplayName}";
         _lblStarForgeState.Text = "运行中";
         _lblStarForgeState.ForeColor = AdviceContinueColor;
@@ -383,6 +384,7 @@ public partial class MainForm
                 SetStarForgeControlsEnabled(true);
                 _btnStarForgeStop.Enabled = false;
                 _btnAutoStart.Enabled = true;
+                _btnAutoOrganize.Enabled = true;
                 ApplyRecognitionAvailability(showHotKeySuccess: false);
             }
         }

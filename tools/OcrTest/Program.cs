@@ -452,6 +452,10 @@ if (args.Contains("--ui-smoke"))
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             if (!autoStart.Enabled || !autoOpenLog.Enabled || autoResultGrid.ColumnCount < 8 || timer.Enabled)
                 throw new InvalidOperationException("自动强化页初始状态不正确");
+            var autoOrganize = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoOrganize",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            if (!autoOrganize.Enabled || autoOrganize.Text != "开始整理")
+                throw new InvalidOperationException("自动强化页缺少开始整理入口");
             var autoOpenSettings = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoOpenSettings",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             if (!autoOpenSettings.Enabled || autoOpenSettings.Text != "强化设置")
@@ -1092,6 +1096,25 @@ if (args.Contains("--synthetic"))
         "双爆需求暴伤项链",
         AttackSetNecklace("暴击伤害"),
         EnhanceAdvice.Continue);
+
+    // 装备整理模式：只卖放弃类，其余跳过，不强化。
+    if (!AutoEnhancementRunner.ShouldSellInOrganizeMode(EnhanceAdvice.GiveUp)
+        || !AutoEnhancementRunner.ShouldSellInOrganizeMode(EnhanceAdvice.GiveUpFixedMain))
+        throw new InvalidOperationException("整理模式应对放弃类建议执行出售");
+    if (AutoEnhancementRunner.ShouldSellInOrganizeMode(EnhanceAdvice.Continue)
+        || AutoEnhancementRunner.ShouldSellInOrganizeMode(EnhanceAdvice.GambleSpeed)
+        || AutoEnhancementRunner.ShouldSellInOrganizeMode(EnhanceAdvice.Keep)
+        || AutoEnhancementRunner.ShouldSellInOrganizeMode(EnhanceAdvice.Reforge))
+        throw new InvalidOperationException("整理模式应对非放弃建议跳过而非出售");
+    if (AutoEnhancementRunner.OrganizeSkipOutcomeText(EnhanceAdvice.Keep) != "跳过（保留）"
+        || AutoEnhancementRunner.OrganizeSkipOutcomeText(EnhanceAdvice.Continue) != "跳过（建议继续）")
+        throw new InvalidOperationException("整理模式跳过文案不正确");
+    var organizeOptions = AutoEnhancementOptions.CreateDefault(
+        3, 20, 20, 28, mode: AutoRunMode.OrganizeSellOnly);
+    if (organizeOptions.Mode != AutoRunMode.OrganizeSellOnly
+        || organizeOptions.DisposalMethod != EquipmentDisposalMethod.Sell
+        || organizeOptions.StopOnValuableEquipment)
+        throw new InvalidOperationException("整理模式选项应强制出售且不因保留停机");
 
     var classifyCriticalWeights = typeof(EnhancementAdvisor).GetMethod(
         "GetHighCriticalWeights",

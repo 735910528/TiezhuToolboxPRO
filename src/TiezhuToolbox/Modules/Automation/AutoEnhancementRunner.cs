@@ -20,6 +20,13 @@ public enum EquipmentDisposalMethod
     Extract,
 }
 
+/// <summary>自动强化页任务模式：完整强化，或仅按建议出售整理。</summary>
+public enum AutoRunMode
+{
+    Enhance,
+    OrganizeSellOnly,
+}
+
 /// <summary>单件装备在本轮自动强化中的最终处置。</summary>
 public enum AutoEnhancementOutcome
 {
@@ -27,6 +34,7 @@ public enum AutoEnhancementOutcome
     Extracted,
     Kept,
     KeptAndStopped,
+    Skipped,
 }
 
 public sealed record AutoEnhancementEquipmentRecord(
@@ -53,6 +61,7 @@ public sealed record AutoEnhancementProgress(
     int Sold,
     int Extracted,
     int Kept,
+    int Skipped = 0,
     AutoEnhancementEquipmentRecord? Equipment = null)
 {
     /// <summary>简要模式下默认展示的级别（操作/普通信息不显示）。</summary>
@@ -75,6 +84,7 @@ public sealed record AutoEnhancementSummary(
     int Sold,
     int Extracted,
     int Kept,
+    int Skipped,
     IReadOnlyList<AutoEnhancementEquipmentRecord> Equipment,
     IReadOnlyList<ReforgeEquipmentSummary> ReforgeEquipment);
 
@@ -92,8 +102,11 @@ public sealed record AutoEnhancementOptions(
     IReadOnlySet<string> DisabledDemandProfiles,
     LegendarySpeedLadder LegendarySpeedLadder,
     TimeSpan UiTimeout,
-    TimeSpan AnimationMinimumWait)
+    TimeSpan AnimationMinimumWait,
+    AutoRunMode Mode = AutoRunMode.Enhance)
 {
+    public bool IsOrganizeSellOnly => Mode == AutoRunMode.OrganizeSellOnly;
+
     public static AutoEnhancementOptions CreateDefault(
         int maxEquipment,
         double leftThreshold,
@@ -106,18 +119,25 @@ public sealed record AutoEnhancementOptions(
         bool speedSetRequiresSpeed = true,
         bool criticalNecklaceMainStatRule = true,
         IReadOnlySet<string>? disabledDemandProfiles = null,
-        LegendarySpeedLadder? legendarySpeedLadder = null)
+        LegendarySpeedLadder? legendarySpeedLadder = null,
+        AutoRunMode mode = AutoRunMode.Enhance)
     {
         var ladder = (legendarySpeedLadder ?? LegendarySpeedLadder.CreateDefault()).Clone();
         ladder.Normalize();
+        var resolvedDisposal = mode == AutoRunMode.OrganizeSellOnly
+            ? EquipmentDisposalMethod.Sell
+            : disposalMethod;
+        var resolvedStop = mode == AutoRunMode.OrganizeSellOnly
+            ? false
+            : stopOnValuableEquipment;
         return new(
             Math.Clamp(maxEquipment, 1, 999),
             leftThreshold,
             rightThreshold,
             level88Threshold,
             Math.Clamp(minimumDemandMatchScore, 0, 100),
-            disposalMethod,
-            stopOnValuableEquipment,
+            resolvedDisposal,
+            resolvedStop,
             heroicOnlyGambleSpeed,
             speedSetRequiresSpeed,
             criticalNecklaceMainStatRule,
@@ -126,7 +146,8 @@ public sealed record AutoEnhancementOptions(
                 : new HashSet<string>(disabledDemandProfiles, StringComparer.Ordinal),
             ladder,
             TimeSpan.FromSeconds(10),
-            TimeSpan.FromSeconds(4));
+            TimeSpan.FromSeconds(4),
+            mode);
     }
 }
 
@@ -140,13 +161,15 @@ public sealed record AutoEnhancementResult(
     public int Sold => Summary.Sold;
     public int Extracted => Summary.Extracted;
     public int Kept => Summary.Kept;
+    public int Skipped => Summary.Skipped;
     public IReadOnlyList<AutoEnhancementEquipmentRecord> Equipment => Summary.Equipment;
     public IReadOnlyList<ReforgeEquipmentSummary> ReforgeEquipment => Summary.ReforgeEquipment;
 }
 
 /// <summary>
-/// 自动强化闭环：图片确认界面与按钮 → OCR 判断 → 单次点击 → 再截图确认。
+/// 自动强化 / 装备整理闭环：图片确认界面与按钮 → OCR 判断 → 单次点击 → 再截图确认。
 /// 任一界面、按钮或 OCR 结果不确定都会抛错停机，绝不按固定坐标继续盲点。
+/// 整理模式（OrganizeSellOnly）只出售放弃类建议，绝不执行强化。
 /// </summary>
 public sealed class AutoEnhancementRunner : IDisposable
 {
@@ -161,6 +184,7 @@ public sealed class AutoEnhancementRunner : IDisposable
     private int _sold;
     private int _extracted;
     private int _kept;
+    private int _skipped;
     private readonly List<AutoEnhancementEquipmentRecord> _equipment = new();
     private readonly List<ReforgeEquipmentSummary> _reforgeEquipment = new();
 
@@ -171,18 +195,47 @@ public sealed class AutoEnhancementRunner : IDisposable
         IProgress<AutoEnhancementProgress>? progress = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
-        _options = options;
+        _options = options.IsOrganizeSellOnly
+            ? options with
+            {
+                DisposalMethod = EquipmentDisposalMethod.Sell,
+                StopOnValuableEquipment = false,
+            }
+            : options;
         _progress = progress;
         _ocrEngine = new OcrEngine(ocrTemplateDirectory);
     }
 
+    /// <summary>整理模式下根据建议决定出售或跳过（供合成测试覆盖）。</summary>
+    public static bool ShouldSellInOrganizeMode(EnhanceAdvice advice)
+        => advice is EnhanceAdvice.GiveUp or EnhanceAdvice.GiveUpFixedMain;
+
+    public static string OrganizeSkipOutcomeText(EnhanceAdvice advice) => advice switch
+    {
+        EnhanceAdvice.Continue => "跳过（建议继续）",
+        EnhanceAdvice.GambleSpeed => "跳过（赌速度）",
+        EnhanceAdvice.Keep => "跳过（保留）",
+        EnhanceAdvice.Reforge => "跳过（建议重铸）",
+        _ => "跳过",
+    };
+
     public async Task<AutoEnhancementResult> RunAsync(CancellationToken cancellationToken)
     {
-        Report(AutoEnhancementLogLevel.Info,
-            $"自动强化已启动，目标 {_session.DisplayName}，本次最多处理 {_options.MaxEquipment} 件装备，" +
-            $"淘汰装备处理方式：{DisposalDisplayName}，紫装规则：{(_options.HeroicOnlyGambleSpeed ? "只赌速度" : "按常规评分")}，" +
-            $"速度套速度规则：{(_options.SpeedSetRequiresSpeed ? "开启" : "关闭")}，暴击项链规则：{(_options.CriticalNecklaceMainStatRule ? "开启" : "关闭")}，" +
-            $"符合保留条件后：{(_options.StopOnValuableEquipment ? "停止" : "返回背包继续")}");
+        if (_options.IsOrganizeSellOnly)
+        {
+            Report(AutoEnhancementLogLevel.Info,
+                $"装备整理已启动（只卖不强化），目标 {_session.DisplayName}，本次最多处理 {_options.MaxEquipment} 件，" +
+                $"紫装规则：{(_options.HeroicOnlyGambleSpeed ? "只赌速度" : "按常规评分")}，" +
+                $"速度套速度规则：{(_options.SpeedSetRequiresSpeed ? "开启" : "关闭")}，暴击项链规则：{(_options.CriticalNecklaceMainStatRule ? "开启" : "关闭")}");
+        }
+        else
+        {
+            Report(AutoEnhancementLogLevel.Info,
+                $"自动强化已启动，目标 {_session.DisplayName}，本次最多处理 {_options.MaxEquipment} 件装备，" +
+                $"淘汰装备处理方式：{DisposalDisplayName}，紫装规则：{(_options.HeroicOnlyGambleSpeed ? "只赌速度" : "按常规评分")}，" +
+                $"速度套速度规则：{(_options.SpeedSetRequiresSpeed ? "开启" : "关闭")}，暴击项链规则：{(_options.CriticalNecklaceMainStatRule ? "开启" : "关闭")}，" +
+                $"符合保留条件后：{(_options.StopOnValuableEquipment ? "停止" : "返回背包继续")}");
+        }
 
         while (_processed < _options.MaxEquipment)
         {
@@ -230,6 +283,12 @@ public sealed class AutoEnhancementRunner : IDisposable
                     _options.LegendarySpeedLadder);
                 Report(AutoEnhancementLogLevel.Recognition,
                     $"强化判断：{advice.Text}；{advice.Detail}");
+
+                if (_options.IsOrganizeSellOnly)
+                {
+                    await HandleOrganizeAdviceAsync(screenshot, info, advice, path, cancellationToken);
+                    break;
+                }
 
                 if (advice.Advice is EnhanceAdvice.Continue or EnhanceAdvice.GambleSpeed)
                 {
@@ -300,9 +359,49 @@ public sealed class AutoEnhancementRunner : IDisposable
             }
         }
 
-        var message = $"已达到本次上限 {_options.MaxEquipment} 件，自动强化结束";
+        var message = _options.IsOrganizeSellOnly
+            ? $"已达到本次上限 {_options.MaxEquipment} 件，装备整理结束"
+            : $"已达到本次上限 {_options.MaxEquipment} 件，自动强化结束";
         Report(AutoEnhancementLogLevel.Success, message);
         return new AutoEnhancementResult(GetSummary(), false, message);
+    }
+
+    private async Task HandleOrganizeAdviceAsync(
+        Bitmap screenshot,
+        EquipmentInfo info,
+        EnhanceAdviceResult advice,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        if (ShouldSellInOrganizeMode(advice.Advice))
+        {
+            if (_options.DisposalMethod != EquipmentDisposalMethod.Sell)
+                throw new InvalidOperationException("整理模式必须使用出售处理方式");
+
+            await DisposeRejectedEquipmentAsync(screenshot, cancellationToken);
+            _processed++;
+            _sold++;
+            RecordEquipment(info, advice, path, AutoEnhancementOutcome.Sold, "出售");
+            Report(AutoEnhancementLogLevel.Success,
+                $"第 {_processed} 件装备已出售，游戏已返回背包并选择下一件装备");
+            return;
+        }
+
+        if (advice.Advice is not (
+            EnhanceAdvice.Continue or EnhanceAdvice.GambleSpeed
+            or EnhanceAdvice.Keep or EnhanceAdvice.Reforge))
+        {
+            throw new InvalidOperationException(
+                $"整理模式无法处理建议“{advice.Text}”：{advice.Detail}");
+        }
+
+        await ReturnToBackpackAndSelectFirstEquipmentAsync(cancellationToken);
+        _processed++;
+        _skipped++;
+        var outcomeText = OrganizeSkipOutcomeText(advice.Advice);
+        RecordEquipment(info, advice, path, AutoEnhancementOutcome.Skipped, outcomeText);
+        Report(AutoEnhancementLogLevel.Success,
+            $"第 {_processed} 件装备{outcomeText}，已返回背包并选中下一件");
     }
 
     private async Task EnterEnhancementScreenAsync(CancellationToken cancellationToken)
@@ -342,6 +441,9 @@ public sealed class AutoEnhancementRunner : IDisposable
         int targetLevel,
         CancellationToken cancellationToken)
     {
+        if (_options.IsOrganizeSellOnly)
+            throw new InvalidOperationException("整理模式禁止执行强化操作");
+
         await ClickTemplateAsync(enhancementScreenshot, AutomationTemplate.AutoRegister,
             "右下角“自动登记”", cancellationToken);
 
@@ -393,7 +495,9 @@ public sealed class AutoEnhancementRunner : IDisposable
     private async Task ReturnToBackpackAndSelectFirstEquipmentAsync(CancellationToken cancellationToken)
     {
         Report(AutoEnhancementLogLevel.Action,
-            "当前装备符合保留条件，设置为继续运行：发送返回（ADB Back / 窗口 Esc）");
+            _options.IsOrganizeSellOnly
+                ? "整理模式跳过当前装备：发送返回（ADB Back / 窗口 Esc）"
+                : "当前装备符合保留条件，设置为继续运行：发送返回（ADB Back / 窗口 Esc）");
         await Task.Run(() => _session.PressBack(), cancellationToken);
 
         using var backpack = await WaitForScreenAsync(
@@ -546,6 +650,7 @@ public sealed class AutoEnhancementRunner : IDisposable
             _sold,
             _extracted,
             _kept,
+            _skipped,
             _equipment.ToArray(),
             _reforgeEquipment.ToArray());
 
@@ -646,7 +751,7 @@ public sealed class AutoEnhancementRunner : IDisposable
         string message,
         AutoEnhancementEquipmentRecord? equipment = null)
         => _progress?.Report(new AutoEnhancementProgress(
-            level, message, _processed, _enhanced, _sold, _extracted, _kept, equipment));
+            level, message, _processed, _enhanced, _sold, _extracted, _kept, _skipped, equipment));
 
     private string DisposalDisplayName
         => _options.DisposalMethod == EquipmentDisposalMethod.Sell ? "出售" : "分解";
