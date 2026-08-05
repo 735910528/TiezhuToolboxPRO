@@ -12,6 +12,7 @@ partial class MainForm
     private AntdUI.Button btnConnect;
     private AntdUI.Select comboWindowResolution;
     private AntdUI.Button btnSetResolution;
+    private AntdUI.Button btnConnectionStep;
     private AntdUI.Button btnRefresh;
     private AntdUI.Button btnOpenFolder;
     private AntdUI.Button btnToggleShot;
@@ -107,6 +108,7 @@ partial class MainForm
         this.btnConnect = new AntdUI.Button();
         this.comboWindowResolution = new AntdUI.Select();
         this.btnSetResolution = new AntdUI.Button();
+        this.btnConnectionStep = new AntdUI.Button();
         this.btnRefresh = new AntdUI.Button();
         this.btnOpenFolder = new AntdUI.Button();
         this.btnToggleShot = new AntdUI.Button();
@@ -186,6 +188,7 @@ partial class MainForm
         this.topPanel.Controls.Add(this.btnConnect);
         this.topPanel.Controls.Add(this.comboWindowResolution);
         this.topPanel.Controls.Add(this.btnSetResolution);
+        this.topPanel.Controls.Add(this.btnConnectionStep);
         this.topPanel.Controls.Add(this.btnRefresh);
         this.topPanel.Controls.Add(this.btnOpenFolder);
         this.topPanel.Controls.Add(this.btnToggleShot);
@@ -273,6 +276,20 @@ partial class MainForm
         this.btnSetResolution.Text = "设分辨率";
         this.btnSetResolution.Visible = false;
         this.btnSetResolution.Click += new EventHandler(this.btnSetResolution_Click);
+        //
+        // btnConnectionStep
+        //
+        this.btnConnectionStep.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+        this.btnConnectionStep.BorderWidth = 1F;
+        this.btnConnectionStep.DefaultBack = Color.White;
+        this.btnConnectionStep.DefaultBorderColor = Color.FromArgb(218, 220, 224);
+        this.btnConnectionStep.Location = new Point(108, 15);
+        this.btnConnectionStep.Name = "btnConnectionStep";
+        this.btnConnectionStep.Radius = 6;
+        this.btnConnectionStep.Size = new Size(76, 34);
+        this.btnConnectionStep.TabIndex = 6;
+        this.btnConnectionStep.Text = "进入";
+        this.btnConnectionStep.Click += new EventHandler(this.btnConnectionStep_Click);
         //
         // btnRefresh
         //

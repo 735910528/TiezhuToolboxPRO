@@ -32,6 +32,8 @@ public partial class MainForm : Form
     // AntdUI.Select 不支持 DataSource 绑定，目标列表单独保存，SelectedIndex 对应下标。
     private List<AdbDeviceInfo> _devices = new();
     private List<GameWindowInfo> _windows = new();
+    /// <summary>是否已进入具体连接参数（折叠时顶部只显示 PC/模拟器）。</summary>
+    private bool _connectionDetailsVisible;
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -66,7 +68,8 @@ public partial class MainForm : Form
         get
         {
             var mode = comboConnectionMode.SelectedValue as string ?? comboConnectionMode.Text;
-            return string.Equals(mode, "窗口", StringComparison.Ordinal);
+            return string.Equals(mode, "PC", StringComparison.Ordinal)
+                || string.Equals(mode, "窗口", StringComparison.Ordinal);
         }
     }
 
@@ -204,7 +207,7 @@ public partial class MainForm : Form
             var found = GameWindowHelper.FindGameWindow(txtAddress.Text.Trim());
             if (found == null)
             {
-                UpdateStatus("未找到游戏窗口。请确认 PC/模拟器窗口标题包含「第七史诗」，或先点刷新再选择");
+                UpdateStatus("未找到游戏窗口。请确认 PC 窗口标题包含「第七史诗」，或先点刷新再选择");
                 return;
             }
 
@@ -218,8 +221,20 @@ public partial class MainForm : Form
         try
         {
             GameWindowHelper.FocusWindow(window.Handle);
-            var (_, _, width, height) = GameWindowHelper.ResolveCaptureRegion(window.Handle);
-            UpdateStatus($"已选用窗口：{window.Title}（画面 {width}×{height}）");
+            var resolutionText = comboWindowResolution.SelectedValue as string
+                ?? comboWindowResolution.Text
+                ?? _settings.WindowContentResolution;
+            if (!AppSettings.TryParseWindowContentResolution(resolutionText, out var targetW, out var targetH))
+            {
+                targetW = 1920;
+                targetH = 1080;
+            }
+
+            var (width, height) = GameWindowHelper.ResizeContentArea(window.Handle, targetW, targetH);
+            _settings.WindowContentResolution = $"{targetW}x{targetH}";
+            comboWindowResolution.Text = _settings.WindowContentResolution;
+            SaveSettingsFromControls();
+            UpdateStatus($"已选用窗口：{window.Title}（已设 {targetW}×{targetH}，实际画面 {width}×{height}）");
         }
         catch (Exception ex)
         {
@@ -235,7 +250,7 @@ public partial class MainForm : Form
             if (index < 0 || index >= _windows.Count)
             {
                 session = null!;
-                error = "请先选择一个游戏窗口（顶部切换到“窗口”，刷新后选择）";
+                error = "请先进入 PC 连接参数，刷新并选择游戏窗口";
                 return false;
             }
 
@@ -248,7 +263,7 @@ public partial class MainForm : Form
         if (deviceIndex < 0 || deviceIndex >= _devices.Count)
         {
             session = null!;
-            error = "请先选择一个 ADB 设备";
+            error = "请先进入模拟器连接参数并选择 ADB 设备";
             return false;
         }
 
@@ -272,9 +287,29 @@ public partial class MainForm : Form
                 ? "第七史诗"
                 : txtAddress.Text.Trim();
 
+        // 选择 PC / 模拟器后自动进入对应参数页。
+        _connectionDetailsVisible = true;
         ApplyConnectionModeUi();
         SaveSettingsFromControls();
         RefreshTargetList();
+    }
+
+    private void btnConnectionStep_Click(object sender, EventArgs e)
+    {
+        if (_connectionDetailsVisible)
+        {
+            _connectionDetailsVisible = false;
+            LayoutTopToolbar();
+            UpdateStatus("已返回连接方式选择（PC / 模拟器）");
+            return;
+        }
+
+        _connectionDetailsVisible = true;
+        ApplyConnectionModeUi();
+        RefreshTargetList();
+        UpdateStatus(IsWindowConnectionMode
+            ? "已进入 PC 连接参数（默认分辨率 1920×1080，选用后会自动设置）"
+            : "已进入模拟器连接参数");
     }
 
     private void ApplyConnectionModeUi()
@@ -284,9 +319,11 @@ public partial class MainForm : Form
             txtAddress.Text = string.IsNullOrWhiteSpace(_settings.WindowTitle)
                 ? "第七史诗"
                 : _settings.WindowTitle;
+            if (string.IsNullOrWhiteSpace(comboWindowResolution.Text))
+                comboWindowResolution.Text = "1920x1080";
             toolTip.SetToolTip(txtAddress, "窗口标题关键字（如 第七史诗），用于过滤窗口列表");
-            toolTip.SetToolTip(comboDevices, "选择 PC 客户端或模拟器游戏窗口");
-            toolTip.SetToolTip(btnConnect, "聚焦并确认所选窗口");
+            toolTip.SetToolTip(comboDevices, "选择 PC 客户端游戏窗口");
+            toolTip.SetToolTip(btnConnect, "选用窗口并自动设置分辨率");
             btnConnect.Text = "选用";
         }
         else
@@ -307,7 +344,7 @@ public partial class MainForm : Form
     {
         if (!IsWindowConnectionMode)
         {
-            UpdateStatus("请先切换到「窗口」连接模式");
+            UpdateStatus("请先选择 PC 连接方式");
             return;
         }
 
