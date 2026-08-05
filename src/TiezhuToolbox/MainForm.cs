@@ -299,6 +299,67 @@ public partial class MainForm : Form
             toolTip.SetToolTip(btnConnect, "adb connect 到输入的地址");
             btnConnect.Text = "连接";
         }
+
+        LayoutTopToolbar();
+    }
+
+    private void btnSetResolution_Click(object sender, EventArgs e)
+    {
+        if (!IsWindowConnectionMode)
+        {
+            UpdateStatus("请先切换到「窗口」连接模式");
+            return;
+        }
+
+        var resolutionText = comboWindowResolution.SelectedValue as string ?? comboWindowResolution.Text;
+        if (!AppSettings.TryParseWindowContentResolution(resolutionText, out var targetW, out var targetH))
+        {
+            UpdateStatus("分辨率格式无效，请使用如 1920x1080");
+            return;
+        }
+
+        if (!TryResolveSelectedWindow(out var window, out var error))
+        {
+            UpdateStatus(error);
+            return;
+        }
+
+        try
+        {
+            GameWindowHelper.FocusWindow(window.Handle);
+            var (width, height) = GameWindowHelper.ResizeContentArea(window.Handle, targetW, targetH);
+            _settings.WindowContentResolution = $"{targetW}x{targetH}";
+            comboWindowResolution.Text = _settings.WindowContentResolution;
+            SaveSettingsFromControls();
+            UpdateStatus($"已设置分辨率：目标 {targetW}×{targetH}，实际画面 {width}×{height}");
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus($"设置分辨率失败：{ex.Message}");
+        }
+    }
+
+    private bool TryResolveSelectedWindow(out GameWindowInfo window, out string error)
+    {
+        var index = comboDevices.SelectedIndex;
+        if (index >= 0 && index < _windows.Count)
+        {
+            window = _windows[index];
+            error = string.Empty;
+            return true;
+        }
+
+        var found = GameWindowHelper.FindGameWindow(txtAddress.Text.Trim());
+        if (found == null)
+        {
+            window = default;
+            error = "请先刷新并选择游戏窗口，再设置分辨率";
+            return false;
+        }
+
+        window = found.Value;
+        error = string.Empty;
+        return true;
     }
 
     /// <summary>

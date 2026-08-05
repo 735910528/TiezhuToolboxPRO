@@ -49,7 +49,8 @@ public partial class MainForm
         _equipmentTab.Controls.Add(pnlScreenshot);
         foreach (var control in new Control[]
                  {
-                     comboConnectionMode, comboDevices, txtAddress, btnConnect, btnRefresh,
+                     comboConnectionMode, comboDevices, txtAddress, btnConnect,
+                     comboWindowResolution, btnSetResolution, btnRefresh,
                      btnOpenFolder, btnToggleShot, btnCaptureRecognize,
                  })
             control.Anchor = AnchorStyles.Top | AnchorStyles.Left;
@@ -62,6 +63,13 @@ public partial class MainForm
         comboConnectionMode.SelectedIndexChanged += comboConnectionMode_SelectedIndexChanged;
         comboDevices.ReadOnly = false;
         comboDevices.List = true;
+        comboWindowResolution.ReadOnly = false;
+        comboWindowResolution.List = false;
+        comboWindowResolution.Items.Clear();
+        foreach (var preset in new[] { "1920x1080", "1600x900", "1280x720", "1366x768" })
+            comboWindowResolution.Items.Add(preset);
+        toolTip.SetToolTip(comboWindowResolution, "目标游戏画面分辨率（宽x高），推荐 1920x1080");
+        toolTip.SetToolTip(btnSetResolution, "将当前选用的游戏窗口调整到目标画面分辨率");
         topPanel.Resize += (_, _) => LayoutTopToolbar();
 
         _disabledDemandProfiles.UnionWith(_settings.DisabledDemandProfiles);
@@ -110,9 +118,12 @@ public partial class MainForm
         var margin = ScalePixel(12);
         var gap = ScalePixel(8);
         var showEquipmentActions = IsEquipmentTabActive;
+        var showResolution = IsWindowConnectionMode;
         btnCaptureRecognize.Visible = showEquipmentActions;
         btnToggleShot.Visible = showEquipmentActions;
         btnOpenFolder.Visible = showEquipmentActions;
+        comboWindowResolution.Visible = showResolution;
+        btnSetResolution.Visible = showResolution;
 
         var right = topPanel.ClientSize.Width - margin;
         if (showEquipmentActions)
@@ -123,13 +134,19 @@ public partial class MainForm
         }
 
         PlaceFromRight(btnRefresh, ScalePixel(76), ref right, gap);
+        if (showResolution)
+        {
+            PlaceFromRight(btnSetResolution, ScalePixel(92), ref right, gap);
+            PlaceFromRight(comboWindowResolution, ScalePixel(118), ref right, gap);
+        }
+
         PlaceFromRight(btnConnect, ScalePixel(76), ref right, gap);
-        PlaceFromRight(txtAddress, ScalePixel(210), ref right, gap);
+        PlaceFromRight(txtAddress, ScalePixel(showResolution ? 150 : 210), ref right, gap);
         comboConnectionMode.Location = new Point(margin, ScalePixel(15));
         comboConnectionMode.Size = new Size(ScalePixel(88), ScalePixel(34));
         var devicesLeft = comboConnectionMode.Right + gap;
         comboDevices.Location = new Point(devicesLeft, ScalePixel(15));
-        comboDevices.Size = new Size(Math.Max(ScalePixel(140), right - devicesLeft), ScalePixel(34));
+        comboDevices.Size = new Size(Math.Max(ScalePixel(120), right - devicesLeft), ScalePixel(34));
     }
 
     private void PlaceFromRight(Control control, int width, ref int right, int gap)
@@ -320,6 +337,9 @@ public partial class MainForm
             comboConnectionMode.SelectedValue = _settings.ConnectionMode is "窗口" ? "窗口" : "ADB";
             if (comboConnectionMode.SelectedIndex < 0)
                 comboConnectionMode.SelectedIndex = 0;
+            comboWindowResolution.Text = string.IsNullOrWhiteSpace(_settings.WindowContentResolution)
+                ? "1920x1080"
+                : _settings.WindowContentResolution;
             ApplyConnectionModeUi();
             _numAutoMaxEquipment.Value = _settings.AutoEnhanceMaxEquipment;
             _comboAutoDisposalMethod.SelectedValue = _settings.AutoEnhanceDisposalMethod;
@@ -372,6 +392,9 @@ public partial class MainForm
             _settings.AdbAddress = string.IsNullOrWhiteSpace(txtAddress.Text)
                 ? "127.0.0.1:16384"
                 : txtAddress.Text.Trim();
+        var resolutionText = comboWindowResolution.SelectedValue as string ?? comboWindowResolution.Text;
+        if (AppSettings.TryParseWindowContentResolution(resolutionText, out var resW, out var resH))
+            _settings.WindowContentResolution = $"{resW}x{resH}";
         _settings.AutoEnhanceMaxEquipment = (int)_numAutoMaxEquipment.Value;
         _settings.AutoEnhanceDisposalMethod = _comboAutoDisposalMethod.SelectedValue as string
             ?? _comboAutoDisposalMethod.Text;

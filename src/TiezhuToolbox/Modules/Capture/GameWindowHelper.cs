@@ -44,6 +44,9 @@ public static class GameWindowHelper
     private static extern bool GetClientRect(IntPtr hWnd, out Rect lpRect);
 
     [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out Rect lpRect);
+
+    [DllImport("user32.dll")]
     private static extern bool ClientToScreen(IntPtr hWnd, ref Point pt);
 
     [DllImport("user32.dll")]
@@ -54,6 +57,16 @@ public static class GameWindowHelper
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(
+        IntPtr hWnd,
+        IntPtr hWndInsertAfter,
+        int x,
+        int y,
+        int cx,
+        int cy,
+        uint uFlags);
 
     [DllImport("user32.dll")]
     private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
@@ -215,5 +228,57 @@ public static class GameWindowHelper
         SetForegroundWindow(hWnd);
         keybd_event(vkMenu, 0, keyeventfKeyup, UIntPtr.Zero);
         Thread.Sleep(80);
+    }
+
+    /// <summary>
+    /// 将游戏内容区调整到目标宽高（参考 e7_rta_auto）：外框 = 目标内容 + 系统边框 + 自绘顶栏。
+    /// 返回调整后 <see cref="ResolveCaptureRegion"/> 测得的实际画面尺寸。
+    /// </summary>
+    public static (int Width, int Height) ResizeContentArea(IntPtr mainHwnd, int targetWidth, int targetHeight)
+    {
+        if (!IsAlive(mainHwnd))
+            throw new InvalidOperationException("游戏窗口已关闭，请重新选择窗口");
+        if (targetWidth < 640 || targetHeight < 360)
+            throw new ArgumentOutOfRangeException(nameof(targetWidth), "目标分辨率过小");
+
+        if (IsIconic(mainHwnd))
+        {
+            ShowWindow(mainHwnd, 9);
+            Thread.Sleep(200);
+        }
+
+        if (!GetWindowRect(mainHwnd, out var windowRect) || !GetClientRect(mainHwnd, out var clientRect))
+            throw new InvalidOperationException("无法读取游戏窗口尺寸");
+
+        var osDecoW = Math.Max(0, (windowRect.Right - windowRect.Left) - clientRect.Width);
+        var osDecoH = Math.Max(0, (windowRect.Bottom - windowRect.Top) - clientRect.Height);
+        var drawnTitle = MeasureDrawnTitleHeight(mainHwnd, clientRect.Height);
+
+        var outerW = targetWidth + osDecoW;
+        var outerH = targetHeight + osDecoH + drawnTitle;
+        const uint swpNomove = 0x0002;
+        const uint swpNozorder = 0x0004;
+        if (!SetWindowPos(mainHwnd, IntPtr.Zero, 0, 0, outerW, outerH, swpNomove | swpNozorder))
+            throw new InvalidOperationException("调整窗口大小失败（可尝试以管理员运行）");
+
+        Thread.Sleep(180);
+        var (_, _, width, height) = ResolveCaptureRegion(mainHwnd);
+        return (width, height);
+    }
+
+    private static int MeasureDrawnTitleHeight(IntPtr mainHwnd, int clientHeight)
+    {
+        var largestChildH = 0;
+        EnumChildWindows(mainHwnd, (child, _) =>
+        {
+            GetClientRect(child, out var childRect);
+            if (childRect.Height > largestChildH)
+                largestChildH = childRect.Height;
+            return true;
+        }, IntPtr.Zero);
+
+        if (largestChildH > 0 && largestChildH < clientHeight)
+            return clientHeight - largestChildH;
+        return 0;
     }
 }

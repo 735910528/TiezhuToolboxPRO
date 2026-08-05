@@ -10,6 +10,8 @@ partial class MainForm
     private AntdUI.Select comboDevices;
     private AntdUI.Input txtAddress;
     private AntdUI.Button btnConnect;
+    private AntdUI.Select comboWindowResolution;
+    private AntdUI.Button btnSetResolution;
     private AntdUI.Button btnRefresh;
     private AntdUI.Button btnOpenFolder;
     private AntdUI.Button btnToggleShot;
@@ -103,6 +105,8 @@ partial class MainForm
         this.comboDevices = new AntdUI.Select();
         this.txtAddress = new AntdUI.Input();
         this.btnConnect = new AntdUI.Button();
+        this.comboWindowResolution = new AntdUI.Select();
+        this.btnSetResolution = new AntdUI.Button();
         this.btnRefresh = new AntdUI.Button();
         this.btnOpenFolder = new AntdUI.Button();
         this.btnToggleShot = new AntdUI.Button();
@@ -180,6 +184,8 @@ partial class MainForm
         this.topPanel.Controls.Add(this.comboDevices);
         this.topPanel.Controls.Add(this.txtAddress);
         this.topPanel.Controls.Add(this.btnConnect);
+        this.topPanel.Controls.Add(this.comboWindowResolution);
+        this.topPanel.Controls.Add(this.btnSetResolution);
         this.topPanel.Controls.Add(this.btnRefresh);
         this.topPanel.Controls.Add(this.btnOpenFolder);
         this.topPanel.Controls.Add(this.btnToggleShot);
@@ -241,6 +247,32 @@ partial class MainForm
         this.btnConnect.TabIndex = 3;
         this.btnConnect.Text = "连接";
         this.btnConnect.Click += new EventHandler(this.btnConnect_Click);
+        //
+        // comboWindowResolution
+        //
+        this.comboWindowResolution.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        this.comboWindowResolution.Location = new Point(524, 15);
+        this.comboWindowResolution.Name = "comboWindowResolution";
+        this.comboWindowResolution.Radius = 6;
+        this.comboWindowResolution.Size = new Size(118, 34);
+        this.comboWindowResolution.TabIndex = 4;
+        this.comboWindowResolution.Text = "1920x1080";
+        this.comboWindowResolution.Visible = false;
+        //
+        // btnSetResolution
+        //
+        this.btnSetResolution.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        this.btnSetResolution.BorderWidth = 1F;
+        this.btnSetResolution.DefaultBack = Color.White;
+        this.btnSetResolution.DefaultBorderColor = Color.FromArgb(218, 220, 224);
+        this.btnSetResolution.Location = new Point(650, 15);
+        this.btnSetResolution.Name = "btnSetResolution";
+        this.btnSetResolution.Radius = 6;
+        this.btnSetResolution.Size = new Size(92, 34);
+        this.btnSetResolution.TabIndex = 5;
+        this.btnSetResolution.Text = "设分辨率";
+        this.btnSetResolution.Visible = false;
+        this.btnSetResolution.Click += new EventHandler(this.btnSetResolution_Click);
         //
         // btnRefresh
         //
