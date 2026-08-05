@@ -53,65 +53,37 @@ public partial class MainForm
         {
             Dock = DockStyle.Fill,
             BackColor = Color.FromArgb(245, 246, 248),
-            Padding = new Padding(24),
+            Padding = new Padding(12, 10, 12, 12),
             ColumnCount = 1,
             RowCount = 2,
         };
         host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        host.RowStyles.Add(new RowStyle(SizeType.Absolute, 176));
+        host.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
         host.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         var controlCard = new Panel
         {
             Dock = DockStyle.Fill,
             BackColor = Color.White,
-            Padding = new Padding(22),
-            Margin = new Padding(0, 0, 0, 14),
-        };
-
-        var title = new Label
-        {
-            Text = "自动强化",
-            Font = new Font("Microsoft YaHei UI", 17F, FontStyle.Bold),
-            ForeColor = TextDarkColor,
-            Location = new Point(22, 18),
-            AutoSize = true,
-        };
-        var hint = new Label
-        {
-            Text = "请先在游戏中打开背包装备列表并选中第一件装备。程序会用标题和按钮图片确认位置，无法确认时立即停止。",
-            ForeColor = Color.FromArgb(95, 99, 104),
-            Location = new Point(24, 57),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-            Size = new Size(720, 24),
-            AutoEllipsis = true,
-        };
-        var warning = new Label
-        {
-            Text = "注意：自动强化会按设置出售/分解淘汰装；「开始整理」只出售放弃类建议，绝不强化。",
-            ForeColor = AdviceGiveUpColor,
-            Font = new Font("Microsoft YaHei UI", 9.75F, FontStyle.Bold),
-            Location = new Point(24, 83),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-            Size = new Size(720, 24),
-            AutoEllipsis = true,
+            Padding = new Padding(12, 0, 12, 0),
+            Margin = new Padding(0, 0, 0, 8),
         };
 
         _lblAutoDevice = new Label
         {
-            Text = "目标：跟随顶部 ADB/窗口选择",
-            ForeColor = TextDarkColor,
-            Location = new Point(24, 123),
-            Size = new Size(200, 34),
+            Text = "目标：跟随顶部 PC/模拟器选择",
+            ForeColor = Color.FromArgb(95, 99, 104),
+            Location = new Point(12, 11),
+            Size = new Size(220, 34),
             TextAlign = ContentAlignment.MiddleLeft,
             AutoEllipsis = true,
         };
         _btnAutoOpenSettings = new AntdUI.Button
         {
-            Text = "强化设置",
+            Text = "设置",
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(480, 123),
-            Size = new Size(96, 34),
+            Location = new Point(520, 11),
+            Size = new Size(72, 34),
             Radius = 6,
             BorderWidth = 1,
             DefaultBack = Color.White,
@@ -120,11 +92,10 @@ public partial class MainForm
         _btnAutoOpenSettings.Click += (_, _) => ShowAutoEnhanceSettingsWindow();
         _btnAutoOrganize = new AntdUI.Button
         {
-            Text = "开始整理",
-            Font = new Font("Microsoft YaHei UI", 9.75F, FontStyle.Bold),
+            Text = "整理",
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(584, 123),
-            Size = new Size(108, 34),
+            Location = new Point(600, 11),
+            Size = new Size(72, 34),
             Radius = 6,
             BorderWidth = 1,
             DefaultBack = Color.White,
@@ -133,11 +104,11 @@ public partial class MainForm
         _btnAutoOrganize.Click += async (_, _) => await StartAutoRunAsync(AutoRunMode.OrganizeSellOnly);
         _btnAutoStart = new AntdUI.Button
         {
-            Text = "开始自动强化",
+            Text = "自动强化",
             Font = new Font("Microsoft YaHei UI", 9.75F, FontStyle.Bold),
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(700, 123),
-            Size = new Size(132, 34),
+            Location = new Point(680, 11),
+            Size = new Size(96, 34),
             Radius = 6,
             Type = AntdUI.TTypeMini.Primary,
         };
@@ -147,8 +118,8 @@ public partial class MainForm
         {
             Text = "停止",
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(840, 123),
-            Size = new Size(88, 34),
+            Location = new Point(784, 11),
+            Size = new Size(72, 34),
             Radius = 6,
             Enabled = false,
             BorderWidth = 1,
@@ -165,21 +136,25 @@ public partial class MainForm
             _btnAutoStop.Enabled = false;
         };
 
+        toolTip.SetToolTip(_lblAutoDevice, "使用顶部工具栏选择的 PC 窗口或模拟器设备");
+        toolTip.SetToolTip(_btnAutoOpenSettings, "打开自动强化规则设置");
+        toolTip.SetToolTip(_btnAutoOrganize, "只出售放弃类装备，不进行强化");
+        toolTip.SetToolTip(_btnAutoStart, "按强化建议自动强化并处理淘汰装备");
+        toolTip.SetToolTip(_btnAutoStop, "停止当前自动强化或整理");
+
         controlCard.Resize += (_, _) =>
         {
-            hint.Width = Math.Max(ScalePixel(300), controlCard.ClientSize.Width - ScalePixel(48));
-            warning.Width = Math.Max(ScalePixel(300), controlCard.ClientSize.Width - ScalePixel(48));
-            _btnAutoStop.Left = controlCard.ClientSize.Width - ScalePixel(110);
-            _btnAutoStart.Left = _btnAutoStop.Left - ScalePixel(140);
-            _btnAutoOrganize.Left = _btnAutoStart.Left - ScalePixel(116);
-            _btnAutoOpenSettings.Left = _btnAutoOrganize.Left - ScalePixel(104);
+            _btnAutoStop.Left = controlCard.ClientSize.Width - ScalePixel(84);
+            _btnAutoStart.Left = _btnAutoStop.Left - ScalePixel(104);
+            _btnAutoOrganize.Left = _btnAutoStart.Left - ScalePixel(80);
+            _btnAutoOpenSettings.Left = _btnAutoOrganize.Left - ScalePixel(80);
             _lblAutoDevice.Width = Math.Max(
-                ScalePixel(100),
+                ScalePixel(120),
                 _btnAutoOpenSettings.Left - _lblAutoDevice.Left - ScalePixel(12));
         };
         controlCard.Controls.AddRange(new Control[]
         {
-            title, hint, warning, _lblAutoDevice, _btnAutoOpenSettings,
+            _lblAutoDevice, _btnAutoOpenSettings,
             _btnAutoOrganize, _btnAutoStart, _btnAutoStop,
         });
 
@@ -195,17 +170,17 @@ public partial class MainForm
         {
             Dock = DockStyle.Fill,
             BackColor = Color.White,
-            Padding = new Padding(18),
+            Padding = new Padding(12),
             Margin = Padding.Empty,
         };
-        var resultHeader = new Panel { Dock = DockStyle.Top, Height = 42 };
+        var resultHeader = new Panel { Dock = DockStyle.Top, Height = 36 };
         var resultTitle = new Label
         {
             Text = "本轮结果",
-            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
+            Font = new Font("Microsoft YaHei UI", 10.5F, FontStyle.Bold),
             ForeColor = TextDarkColor,
             Dock = DockStyle.Left,
-            Width = 88,
+            Width = 76,
             TextAlign = ContentAlignment.MiddleLeft,
         };
         _lblAutoState = new Label
@@ -213,12 +188,12 @@ public partial class MainForm
             Text = "未开始",
             ForeColor = AdviceNoneColor,
             Dock = DockStyle.Left,
-            Width = 100,
+            Width = 88,
             TextAlign = ContentAlignment.MiddleLeft,
         };
         var filterLabel = new Label
         {
-            Text = "结果",
+            Text = "筛选",
             ForeColor = Color.FromArgb(95, 99, 104),
             Dock = DockStyle.Left,
             Width = 36,
@@ -227,7 +202,7 @@ public partial class MainForm
         _comboAutoResultFilter = new AntdUI.Select
         {
             Dock = DockStyle.Left,
-            Width = 96,
+            Width = 88,
             Radius = 6,
             List = true,
             ReadOnly = false,
@@ -250,15 +225,15 @@ public partial class MainForm
             ForeColor = Color.FromArgb(95, 99, 104),
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
             Location = new Point(300, 0),
-            Size = new Size(480, 42),
+            Size = new Size(480, 36),
             TextAlign = ContentAlignment.MiddleRight,
         };
         _btnAutoOpenLog = new AntdUI.Button
         {
-            Text = "过程日志",
+            Text = "日志",
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(860, 4),
-            Size = new Size(88, 34),
+            Location = new Point(860, 2),
+            Size = new Size(64, 32),
             Radius = 6,
             BorderWidth = 1,
             DefaultBack = Color.White,
@@ -269,7 +244,7 @@ public partial class MainForm
         {
             _btnAutoOpenLog.Left = Math.Max(0, resultHeader.ClientSize.Width - _btnAutoOpenLog.Width);
             _lblAutoStats.Left = Math.Max(
-                ScalePixel(320),
+                ScalePixel(280),
                 _btnAutoOpenLog.Left - _lblAutoStats.Width - ScalePixel(8));
         };
         resultHeader.Controls.AddRange(new Control[]
@@ -284,10 +259,10 @@ public partial class MainForm
             ColumnCount = 2,
             RowCount = 1,
             Margin = Padding.Empty,
-            Padding = new Padding(0, 8, 0, 0),
+            Padding = new Padding(0, 6, 0, 0),
         };
         body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, ScalePixel(300)));
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, ScalePixel(280)));
         body.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
         _autoResultGrid = new DataGridView
@@ -306,8 +281,8 @@ public partial class MainForm
             GridColor = Color.FromArgb(232, 234, 237),
             EnableHeadersVisualStyles = false,
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
-            ColumnHeadersHeight = 34,
-            RowTemplate = { Height = 30 },
+            ColumnHeadersHeight = 30,
+            RowTemplate = { Height = 28 },
             Font = new Font("Microsoft YaHei UI", 9F),
             Margin = new Padding(0, 0, 8, 0),
         };
@@ -334,24 +309,24 @@ public partial class MainForm
             Dock = DockStyle.Fill,
             BackColor = Color.FromArgb(248, 249, 250),
             BorderStyle = BorderStyle.FixedSingle,
-            Padding = new Padding(10),
+            Padding = new Padding(8),
             Margin = Padding.Empty,
         };
         var previewTitle = new Label
         {
             Text = "判定截图",
-            Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold),
+            Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold),
             ForeColor = TextDarkColor,
             Dock = DockStyle.Top,
-            Height = 28,
+            Height = 24,
             TextAlign = ContentAlignment.MiddleLeft,
         };
         _lblAutoPreviewHint = new Label
         {
-            Text = "选中结果后在此显示，点击图片可放大",
+            Text = "选中结果后显示，点击可放大",
             ForeColor = Color.FromArgb(95, 99, 104),
             Dock = DockStyle.Bottom,
-            Height = 28,
+            Height = 22,
             TextAlign = ContentAlignment.MiddleLeft,
         };
         _autoResultPreview = new PictureBox
