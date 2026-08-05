@@ -1,4 +1,0 @@
-Scapy 2.5.0 (vendored)
-License: GPL-2.0
-Source: https://pypi.org/project/scapy/
-Used only for local packet capture in the gear export feature.

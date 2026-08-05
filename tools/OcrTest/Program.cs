@@ -307,7 +307,7 @@ if (args.Contains("--ui-smoke"))
                 ?? throw new InvalidOperationException("未找到主页签");
             var tabs = tabsField.GetValue(form) ?? throw new InvalidOperationException("主页签未初始化");
             var pages = tabs.GetType().GetProperty("Pages")?.GetValue(tabs) as System.Collections.ICollection;
-            if (pages?.Count != 6)
+            if (pages?.Count != 5)
                 throw new InvalidOperationException($"页签数量错误：{pages?.Count}");
 
             var selectedIndex = tabs.GetType().GetProperty("SelectedIndex")!;
@@ -474,18 +474,6 @@ if (args.Contains("--ui-smoke"))
 
             selectedIndex.SetValue(tabs, 2);
             Application.DoEvents();
-            CaptureTab("gear-export");
-            var gearScanStart = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnGearScanStart",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            var gearScanStop = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnGearScanStop",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            var gearExportFile = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnGearExportFile",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            if (!gearScanStart.Enabled || gearScanStop.Enabled || gearExportFile.Enabled || timer.Enabled)
-                throw new InvalidOperationException("装备导出页初始状态不正确");
-
-            selectedIndex.SetValue(tabs, 3);
-            Application.DoEvents();
             CaptureTab("star-forge");
             var starForgeStart = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnStarForgeStart",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
@@ -499,7 +487,7 @@ if (args.Contains("--ui-smoke"))
             if (starForgeLog.Right < starForgeLog.Parent!.ClientSize.Width - starForgeLog.Parent.Padding.Right - 2)
                 throw new InvalidOperationException("星之铁匠铺日志未填满内容区");
 
-            selectedIndex.SetValue(tabs, 4);
+            selectedIndex.SetValue(tabs, 3);
             Application.DoEvents();
             CaptureTab("demand-analysis");
             var demandBrowser = typeof(TiezhuToolbox.MainForm).GetField("_demandBrowserControl",
@@ -555,7 +543,7 @@ if (args.Contains("--ui-smoke"))
                 throw new InvalidOperationException("需求子类开关没有更新匹配过滤配置");
             if (timer.Enabled)
                 throw new InvalidOperationException("离开装备页后持续识别仍在运行");
-            selectedIndex.SetValue(tabs, 5);
+            selectedIndex.SetValue(tabs, 4);
             Application.DoEvents();
             var settingInputs = new[] { "numLeftThreshold", "numRightThreshold", "numLevel88Threshold", "comboRecognitionHotKey", "numRecognitionInterval" }
                 .Select(name => (Control)typeof(TiezhuToolbox.MainForm).GetField(name,
@@ -651,7 +639,7 @@ if (args.Contains("--ui-smoke"))
         throw new TimeoutException("界面冒烟测试超时");
     if (uiError != null)
         throw new InvalidOperationException("界面冒烟测试失败", uiError);
-    Console.WriteLine("界面冒烟测试通过：6 个页签，23 个套装需求");
+    Console.WriteLine("界面冒烟测试通过：5 个页签，23 个套装需求");
     return;
 }
 
