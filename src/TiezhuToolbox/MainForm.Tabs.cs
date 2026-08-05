@@ -363,11 +363,6 @@ public partial class MainForm
             comboWindowResolution.Text = string.IsNullOrWhiteSpace(_settings.WindowContentResolution)
                 ? "1920x1080"
                 : _settings.WindowContentResolution;
-            if (comboWindowResolution.SelectedIndex < 0
-                && AppSettings.TryParseWindowContentResolution(comboWindowResolution.Text, out _, out _))
-            {
-                // 预设列表中没有时保留文本，选用时仍按文本解析。
-            }
 
             _connectionDetailsVisible = false;
             ApplyConnectionModeUi();
