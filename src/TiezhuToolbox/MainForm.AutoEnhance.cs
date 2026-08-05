@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using TiezhuToolbox.Modules.Automation;
 using TiezhuToolbox.Modules.Recommend;
 
@@ -13,7 +12,6 @@ public partial class MainForm
     private AntdUI.Button _btnAutoOpenSettings = null!;
     private AntdUI.Button _btnAutoClearLog = null!;
     private AntdUI.Button _btnAutoOpenLog = null!;
-    private AntdUI.Button _btnAutoOpenScreenshot = null!;
     private AntdUI.Select _comboAutoResultFilter = null!;
     private AntdUI.InputNumber _numAutoMaxEquipment = null!;
     private AntdUI.Select _comboAutoDisposalMethod = null!;
@@ -31,11 +29,15 @@ public partial class MainForm
     private Label _lblAutoDevice = null!;
     private Label _lblAutoState = null!;
     private Label _lblAutoStats = null!;
+    private Label _lblAutoPreviewHint = null!;
     private DataGridView _autoResultGrid = null!;
+    private PictureBox _autoResultPreview = null!;
+    private string? _autoResultPreviewPath;
     private readonly List<AutoEnhancementEquipmentRecord> _autoResultRecords = new();
     private RichTextBox _autoLog = null!;
     private Form? _autoLogForm;
     private bool _autoLogFormAllowClose;
+    private Form? _autoScreenshotZoomForm;
     private Form? _autoEnhanceSettingsForm;
     private bool _autoEnhanceSettingsFormAllowClose;
     private Panel _autoEnhanceSettingsPanel = null!;
@@ -248,14 +250,14 @@ public partial class MainForm
             ForeColor = Color.FromArgb(95, 99, 104),
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
             Location = new Point(300, 0),
-            Size = new Size(400, 42),
+            Size = new Size(480, 42),
             TextAlign = ContentAlignment.MiddleRight,
         };
         _btnAutoOpenLog = new AntdUI.Button
         {
             Text = "过程日志",
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(760, 4),
+            Location = new Point(860, 4),
             Size = new Size(88, 34),
             Radius = 6,
             BorderWidth = 1,
@@ -263,23 +265,9 @@ public partial class MainForm
             DefaultBorderColor = Color.FromArgb(218, 220, 224),
         };
         _btnAutoOpenLog.Click += (_, _) => ShowAutoLogWindow();
-        _btnAutoOpenScreenshot = new AntdUI.Button
-        {
-            Text = "打开截图",
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(858, 4),
-            Size = new Size(88, 34),
-            Radius = 6,
-            BorderWidth = 1,
-            DefaultBack = Color.White,
-            DefaultBorderColor = Color.FromArgb(218, 220, 224),
-            Enabled = false,
-        };
-        _btnAutoOpenScreenshot.Click += (_, _) => OpenSelectedAutoResultScreenshot();
         resultHeader.Resize += (_, _) =>
         {
-            _btnAutoOpenScreenshot.Left = Math.Max(0, resultHeader.ClientSize.Width - _btnAutoOpenScreenshot.Width);
-            _btnAutoOpenLog.Left = Math.Max(0, _btnAutoOpenScreenshot.Left - _btnAutoOpenLog.Width - ScalePixel(8));
+            _btnAutoOpenLog.Left = Math.Max(0, resultHeader.ClientSize.Width - _btnAutoOpenLog.Width);
             _lblAutoStats.Left = Math.Max(
                 ScalePixel(320),
                 _btnAutoOpenLog.Left - _lblAutoStats.Width - ScalePixel(8));
@@ -287,8 +275,20 @@ public partial class MainForm
         resultHeader.Controls.AddRange(new Control[]
         {
             resultTitle, _lblAutoState, filterLabel, _comboAutoResultFilter,
-            _lblAutoStats, _btnAutoOpenLog, _btnAutoOpenScreenshot,
+            _lblAutoStats, _btnAutoOpenLog,
         });
+
+        var body = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            Margin = Padding.Empty,
+            Padding = new Padding(0, 8, 0, 0),
+        };
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, ScalePixel(300)));
+        body.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
         _autoResultGrid = new DataGridView
         {
@@ -309,6 +309,7 @@ public partial class MainForm
             ColumnHeadersHeight = 34,
             RowTemplate = { Height = 30 },
             Font = new Font("Microsoft YaHei UI", 9F),
+            Margin = new Padding(0, 0, 8, 0),
         };
         _autoResultGrid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(241, 243, 244);
         _autoResultGrid.ColumnHeadersDefaultCellStyle.ForeColor = TextDarkColor;
@@ -326,11 +327,49 @@ public partial class MainForm
             new DataGridViewTextBoxColumn { Name = "Advice", HeaderText = "建议", FillWeight = 70 },
             new DataGridViewTextBoxColumn { Name = "Outcome", HeaderText = "结果", FillWeight = 70 },
             new DataGridViewTextBoxColumn { Name = "Detail", HeaderText = "备注", FillWeight = 140 });
-        _autoResultGrid.SelectionChanged += (_, _) =>
-            _btnAutoOpenScreenshot.Enabled = TryGetSelectedAutoResult(out _);
-        _autoResultGrid.CellDoubleClick += (_, _) => OpenSelectedAutoResultScreenshot();
+        _autoResultGrid.SelectionChanged += (_, _) => UpdateAutoResultScreenshotPreview();
 
-        resultCard.Controls.Add(_autoResultGrid);
+        var previewPanel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(248, 249, 250),
+            BorderStyle = BorderStyle.FixedSingle,
+            Padding = new Padding(10),
+            Margin = Padding.Empty,
+        };
+        var previewTitle = new Label
+        {
+            Text = "判定截图",
+            Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold),
+            ForeColor = TextDarkColor,
+            Dock = DockStyle.Top,
+            Height = 28,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+        _lblAutoPreviewHint = new Label
+        {
+            Text = "选中结果后在此显示，点击图片可放大",
+            ForeColor = Color.FromArgb(95, 99, 104),
+            Dock = DockStyle.Bottom,
+            Height = 28,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+        _autoResultPreview = new PictureBox
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(241, 243, 244),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Cursor = Cursors.Hand,
+            BorderStyle = BorderStyle.None,
+        };
+        _autoResultPreview.Click += (_, _) => ShowAutoResultScreenshotZoom();
+        previewPanel.Controls.Add(_autoResultPreview);
+        previewPanel.Controls.Add(_lblAutoPreviewHint);
+        previewPanel.Controls.Add(previewTitle);
+
+        body.Controls.Add(_autoResultGrid, 0, 0);
+        body.Controls.Add(previewPanel, 1, 0);
+        resultCard.Controls.Add(body);
         resultCard.Controls.Add(resultHeader);
         return resultCard;
     }
@@ -864,7 +903,7 @@ public partial class MainForm
         if (_autoResultGrid == null || _autoResultGrid.IsDisposed)
             return;
         _autoResultGrid.Rows.Clear();
-        _btnAutoOpenScreenshot.Enabled = false;
+        ClearAutoResultScreenshotPreview();
     }
 
     private void ResetAutoResultFilter()
@@ -961,15 +1000,21 @@ public partial class MainForm
         foreach (var record in visible)
             AppendAutoResultGridRow(record);
 
-        _btnAutoOpenScreenshot.Enabled = TryGetSelectedAutoResult(out _);
         if (_autoResultGrid.Rows.Count > 0)
         {
             _autoResultGrid.ClearSelection();
             var last = _autoResultGrid.Rows.Count - 1;
             _autoResultGrid.Rows[last].Selected = true;
             _autoResultGrid.FirstDisplayedScrollingRowIndex = Math.Max(0, last);
-            _btnAutoOpenScreenshot.Enabled = TryGetSelectedAutoResult(out _);
+            if (_autoResultGrid.Rows[last].Cells.Count > 0)
+                _autoResultGrid.CurrentCell = _autoResultGrid.Rows[last].Cells[0];
         }
+        else
+        {
+            ClearAutoResultScreenshotPreview();
+        }
+
+        UpdateAutoResultScreenshotPreview();
     }
 
     private void AppendAutoResultGridRow(AutoEnhancementEquipmentRecord record)
@@ -1004,27 +1049,149 @@ public partial class MainForm
             record = selected;
             return true;
         }
+
+        if (_autoResultGrid?.SelectedRows.Count > 0
+            && _autoResultGrid.SelectedRows[0].Tag is AutoEnhancementEquipmentRecord fromSelection)
+        {
+            record = fromSelection;
+            return true;
+        }
+
         return false;
     }
 
-    private void OpenSelectedAutoResultScreenshot()
+    private void UpdateAutoResultScreenshotPreview()
     {
-        if (!TryGetSelectedAutoResult(out var record))
+        if (_autoResultPreview == null || _autoResultPreview.IsDisposed)
             return;
+        if (_autoResultPreview.InvokeRequired)
+        {
+            _autoResultPreview.BeginInvoke(UpdateAutoResultScreenshotPreview);
+            return;
+        }
+
+        if (!TryGetSelectedAutoResult(out var record))
+        {
+            ClearAutoResultScreenshotPreview();
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(record.ScreenshotPath) || !File.Exists(record.ScreenshotPath))
         {
-            UpdateStatus("该结果没有可用的判定截图");
+            ClearAutoResultScreenshotPreview();
+            if (_lblAutoPreviewHint != null && !_lblAutoPreviewHint.IsDisposed)
+                _lblAutoPreviewHint.Text = "该结果没有可用截图";
+            return;
+        }
+
+        if (string.Equals(_autoResultPreviewPath, record.ScreenshotPath, StringComparison.OrdinalIgnoreCase)
+            && _autoResultPreview.Image != null)
+        {
+            if (_lblAutoPreviewHint != null && !_lblAutoPreviewHint.IsDisposed)
+                _lblAutoPreviewHint.Text = "点击图片可放大查看";
             return;
         }
 
         try
         {
-            Process.Start(new ProcessStartInfo(record.ScreenshotPath) { UseShellExecute = true });
+            var image = LoadImageCopy(record.ScreenshotPath);
+            var old = _autoResultPreview.Image;
+            _autoResultPreview.Image = image;
+            _autoResultPreviewPath = record.ScreenshotPath;
+            old?.Dispose();
+            if (_lblAutoPreviewHint != null && !_lblAutoPreviewHint.IsDisposed)
+                _lblAutoPreviewHint.Text = "点击图片可放大查看";
         }
         catch (Exception ex)
         {
-            UpdateStatus($"打开截图失败：{ex.Message}");
+            ClearAutoResultScreenshotPreview();
+            if (_lblAutoPreviewHint != null && !_lblAutoPreviewHint.IsDisposed)
+                _lblAutoPreviewHint.Text = $"截图加载失败：{ex.Message}";
         }
+    }
+
+    private void ClearAutoResultScreenshotPreview()
+    {
+        if (_autoResultPreview == null || _autoResultPreview.IsDisposed)
+            return;
+        var old = _autoResultPreview.Image;
+        _autoResultPreview.Image = null;
+        _autoResultPreviewPath = null;
+        old?.Dispose();
+        if (_lblAutoPreviewHint != null && !_lblAutoPreviewHint.IsDisposed)
+            _lblAutoPreviewHint.Text = "选中结果后在此显示，点击图片可放大";
+    }
+
+    private static Image LoadImageCopy(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var image = Image.FromStream(stream);
+        return new Bitmap(image);
+    }
+
+    private void ShowAutoResultScreenshotZoom()
+    {
+        if (_autoResultPreview?.Image == null
+            || string.IsNullOrWhiteSpace(_autoResultPreviewPath)
+            || !File.Exists(_autoResultPreviewPath))
+        {
+            UpdateStatus("当前没有可放大的判定截图");
+            return;
+        }
+
+        if (_autoScreenshotZoomForm != null && !_autoScreenshotZoomForm.IsDisposed)
+        {
+            _autoScreenshotZoomForm.Close();
+            _autoScreenshotZoomForm.Dispose();
+            _autoScreenshotZoomForm = null;
+        }
+
+        Image zoomImage;
+        try
+        {
+            zoomImage = LoadImageCopy(_autoResultPreviewPath);
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus($"打开放大图失败：{ex.Message}");
+            return;
+        }
+
+        var picture = new PictureBox
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(32, 33, 36),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Image = zoomImage,
+            Cursor = Cursors.Hand,
+        };
+        var form = new Form
+        {
+            Text = "判定截图（点击或按 Esc 关闭）",
+            StartPosition = FormStartPosition.CenterParent,
+            Size = new Size(ScalePixel(1100), ScalePixel(720)),
+            MinimumSize = new Size(ScalePixel(640), ScalePixel(420)),
+            ShowInTaskbar = false,
+            MinimizeBox = false,
+            BackColor = Color.FromArgb(32, 33, 36),
+        };
+        form.Controls.Add(picture);
+        form.KeyPreview = true;
+        form.KeyDown += (_, e) =>
+        {
+            if (e.KeyCode == Keys.Escape)
+                form.Close();
+        };
+        picture.Click += (_, _) => form.Close();
+        form.FormClosed += (_, _) =>
+        {
+            picture.Image = null;
+            zoomImage.Dispose();
+            if (ReferenceEquals(_autoScreenshotZoomForm, form))
+                _autoScreenshotZoomForm = null;
+        };
+        _autoScreenshotZoomForm = form;
+        form.Show(this);
     }
 
     private void AppendAutoLog(AutoEnhancementLogLevel level, string message)

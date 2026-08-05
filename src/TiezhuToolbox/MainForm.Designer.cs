@@ -77,6 +77,20 @@ partial class MainForm
         if (disposing)
         {
             pictureBox?.Image?.Dispose();
+            if (_autoResultPreview?.Image != null)
+            {
+                var preview = _autoResultPreview.Image;
+                _autoResultPreview.Image = null;
+                preview.Dispose();
+            }
+
+            if (_autoScreenshotZoomForm != null && !_autoScreenshotZoomForm.IsDisposed)
+            {
+                _autoScreenshotZoomForm.Close();
+                _autoScreenshotZoomForm.Dispose();
+                _autoScreenshotZoomForm = null;
+            }
+
             _ocrEngine?.Dispose();
             _applicationIcon?.Dispose();
             if (_autoLogForm != null && !_autoLogForm.IsDisposed)
