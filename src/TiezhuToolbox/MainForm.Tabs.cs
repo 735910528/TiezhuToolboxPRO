@@ -83,7 +83,8 @@ public partial class MainForm
         _disabledDemandProfiles.UnionWith(_settings.DisabledDemandProfiles);
         _demandBrowserControl = new DemandBrowserControl(
             profileKey => !_disabledDemandProfiles.Contains(profileKey),
-            SetDemandProfileEnabled);
+            SetDemandProfileEnabled,
+            OnDemandProfilesChanged);
         _demandTab.Controls.Add(_demandBrowserControl);
         _demandBrowserControl.ApplyInitialDpiScale(_layoutDpi);
 
@@ -534,6 +535,18 @@ public partial class MainForm
         }
 
         PushWebProfileEnabled(profileKey, enabled);
+        PushWebEquipment();
+    }
+
+    private void OnDemandProfilesChanged()
+    {
+        if (_lastInfo != null)
+        {
+            ShowDemandRecommendations(_lastInfo);
+            UpdateAdvice();
+        }
+
+        PushWebDemand();
         PushWebEquipment();
     }
 

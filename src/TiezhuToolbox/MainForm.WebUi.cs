@@ -20,7 +20,7 @@ public partial class MainForm
         "紫装只赌速度：鞋子除外；开启后忽略分数与匹配度，按严格速度阶梯处理。",
         "速度套速度规则：鞋子必须为速度主属性，其他部位必须含速度副属性。",
         "暴击项链规则：暴击率或暴伤达到高权重时，项链只接受对应的主属性。",
-        "套装子类：只匹配当前套装下的内置属性组合，不使用旧角色算法回退。",
+        "套装子类：匹配当前套装下已启用的内置及手动属性组合，不使用旧角色算法回退。",
         "右三主属性：85级按90级满值预估，88/90使用同一满值档参与用途匹配。",
         "强化分数：始终只统计副属性；主属性不会加入分数阶梯或重铸分数。",
         "固定主属性：右三固定攻击、生命、防御不匹配任何需求子类。",
@@ -50,7 +50,7 @@ public partial class MainForm
     private bool CanUseWebPage
         => _webUiReady && !_webUiFailed && !_webUiSkipped && _webView?.CoreWebView2 != null;
 
-    private bool IsWebContentPage(int index) => index is 0 or 4 or 5;
+    private bool IsWebContentPage(int index) => index is 0 or 5;
 
     private void CreateHybridShell()
     {
@@ -257,8 +257,6 @@ public partial class MainForm
             PostWebMessage(new { type = "page", page = PageIds[index] });
             if (index == 0)
                 PushWebEquipment();
-            else if (index == 4)
-                PushWebDemand();
             else
                 PushWebSettings();
             return;
