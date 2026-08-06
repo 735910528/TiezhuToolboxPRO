@@ -33,6 +33,7 @@ public partial class MainForm
     private Panel _nativeHost = null!;
     private Panel _equipmentHost = null!;
     private Control _autoEnhanceContent = null!;
+    private Control _gearScanContent = null!;
     private Control _starForgeContent = null!;
     private AntdUI.TabPage _demandTab = null!;
     private WebView2? _webView;
@@ -42,13 +43,14 @@ public partial class MainForm
     private bool _webUiFailed;
     private bool _webUiSkipped;
 
-    private static readonly string[] PageIds = ["equipment", "auto", "forge", "demand", "settings"];
-    private static readonly string[] PageTitles = ["装备强化", "自动强化", "星之铁匠铺", "需求分析", "软件设置"];
+    private static readonly string[] PageIds = ["equipment", "scan", "auto", "forge", "demand", "settings"];
+    private static readonly string[] PageTitles =
+        ["装备强化", "装备扫描", "自动强化", "星之铁匠铺", "需求分析", "软件设置"];
 
     private bool CanUseWebPage
         => _webUiReady && !_webUiFailed && !_webUiSkipped && _webView?.CoreWebView2 != null;
 
-    private bool IsWebContentPage(int index) => index is 0 or 3 or 4;
+    private bool IsWebContentPage(int index) => index is 0 or 4 or 5;
 
     private void CreateHybridShell()
     {
@@ -143,7 +145,7 @@ public partial class MainForm
                 Text = PageTitles[i],
                 AutoSize = false,
                 Location = new Point(x, 0),
-                Size = new Size(ScalePixel(96), ScalePixel(43)),
+                Size = new Size(ScalePixel(88), ScalePixel(43)),
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
@@ -255,7 +257,7 @@ public partial class MainForm
             PostWebMessage(new { type = "page", page = PageIds[index] });
             if (index == 0)
                 PushWebEquipment();
-            else if (index == 3)
+            else if (index == 4)
                 PushWebDemand();
             else
                 PushWebSettings();
@@ -305,10 +307,11 @@ public partial class MainForm
     private Control NativeContentFor(int index) => index switch
     {
         0 => _equipmentHost,
-        1 => _autoEnhanceContent,
-        2 => _starForgeContent,
-        3 => _demandBrowserControl,
-        4 => _settingsScrollHost,
+        1 => _gearScanContent,
+        2 => _autoEnhanceContent,
+        3 => _starForgeContent,
+        4 => _demandBrowserControl,
+        5 => _settingsScrollHost,
         _ => _equipmentHost,
     };
 
@@ -317,6 +320,7 @@ public partial class MainForm
         Control tab = content switch
         {
             _ when content == _equipmentHost => _equipmentTab,
+            _ when content == _gearScanContent => _gearScanTab,
             _ when content == _autoEnhanceContent => _autoEnhanceTab,
             _ when content == _starForgeContent => _starForgeTab,
             _ when content == _demandBrowserControl => _demandTab,
