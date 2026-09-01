@@ -11,6 +11,7 @@ partial class MainForm
     private AntdUI.Input txtAddress;
     private AntdUI.Button btnConnect;
     private AntdUI.Select comboWindowResolution;
+    private AntdUI.Select comboWindowInputMode;
     private AntdUI.Button btnSetResolution;
     private AntdUI.Button btnConnectionStep;
     private AntdUI.Button btnRefresh;
@@ -121,6 +122,7 @@ partial class MainForm
         this.txtAddress = new AntdUI.Input();
         this.btnConnect = new AntdUI.Button();
         this.comboWindowResolution = new AntdUI.Select();
+        this.comboWindowInputMode = new AntdUI.Select();
         this.btnSetResolution = new AntdUI.Button();
         this.btnConnectionStep = new AntdUI.Button();
         this.btnRefresh = new AntdUI.Button();
@@ -201,6 +203,7 @@ partial class MainForm
         this.topPanel.Controls.Add(this.txtAddress);
         this.topPanel.Controls.Add(this.btnConnect);
         this.topPanel.Controls.Add(this.comboWindowResolution);
+        this.topPanel.Controls.Add(this.comboWindowInputMode);
         this.topPanel.Controls.Add(this.btnSetResolution);
         this.topPanel.Controls.Add(this.btnConnectionStep);
         this.topPanel.Controls.Add(this.btnRefresh);
@@ -275,6 +278,17 @@ partial class MainForm
         this.comboWindowResolution.TabIndex = 4;
         this.comboWindowResolution.Text = "1920x1080";
         this.comboWindowResolution.Visible = false;
+        //
+        // comboWindowInputMode
+        //
+        this.comboWindowInputMode.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        this.comboWindowInputMode.Location = new Point(410, 15);
+        this.comboWindowInputMode.Name = "comboWindowInputMode";
+        this.comboWindowInputMode.Radius = 6;
+        this.comboWindowInputMode.Size = new Size(76, 34);
+        this.comboWindowInputMode.TabIndex = 4;
+        this.comboWindowInputMode.Text = "前台";
+        this.comboWindowInputMode.Visible = false;
         //
         // btnSetResolution
         //

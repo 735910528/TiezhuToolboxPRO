@@ -50,7 +50,7 @@ public partial class MainForm
         foreach (var control in new Control[]
                  {
                      comboConnectionMode, comboDevices, txtAddress, btnConnect,
-                     comboWindowResolution, btnSetResolution, btnConnectionStep, btnRefresh,
+                     comboWindowResolution, comboWindowInputMode, btnSetResolution, btnConnectionStep, btnRefresh,
                      btnOpenFolder, btnToggleShot, btnCaptureRecognize,
                  })
             control.Anchor = AnchorStyles.Top | AnchorStyles.Left;
@@ -68,7 +68,14 @@ public partial class MainForm
         comboWindowResolution.Items.Clear();
         foreach (var preset in new[] { "1920x1080", "1600x900", "1280x720", "1366x768" })
             comboWindowResolution.Items.Add(preset);
+        comboWindowInputMode.ReadOnly = false;
+        comboWindowInputMode.List = true;
+        comboWindowInputMode.Items.Clear();
+        comboWindowInputMode.Items.Add("前台");
+        comboWindowInputMode.Items.Add("后台");
+        comboWindowInputMode.SelectedIndexChanged += comboWindowInputMode_SelectedIndexChanged;
         toolTip.SetToolTip(comboConnectionMode, "先选择 PC 或模拟器，再进入连接参数");
+        toolTip.SetToolTip(comboWindowInputMode, "前台会抢鼠标；后台不抢键鼠，窗口可能短暂移动");
         toolTip.SetToolTip(btnConnectionStep, "进入当前方式的连接参数；参数页可点「切换」返回");
         toolTip.SetToolTip(comboWindowResolution, "目标游戏画面分辨率，选用窗口时会自动设置");
         toolTip.SetToolTip(btnSetResolution, "手动将当前窗口调整到目标分辨率");
@@ -132,6 +139,7 @@ public partial class MainForm
         btnConnect.Visible = showDetails;
         btnRefresh.Visible = showDetails;
         comboWindowResolution.Visible = showPcParams;
+        comboWindowInputMode.Visible = showPcParams;
         // 选用窗口时会自动设分辨率，手动按钮默认隐藏，避免工具栏拥挤。
         btnSetResolution.Visible = false;
 
@@ -153,7 +161,11 @@ public partial class MainForm
             PlaceFromRight(btnRefresh, ScalePixel(76), ref right, gap);
             PlaceFromRight(btnConnect, ScalePixel(76), ref right, gap);
             if (showPcParams)
+            {
                 PlaceFromRight(comboWindowResolution, ScalePixel(118), ref right, gap);
+                PlaceFromRight(comboWindowInputMode, ScalePixel(76), ref right, gap);
+            }
+
             PlaceFromRight(txtAddress, ScalePixel(showPcParams ? 120 : 180), ref right, gap);
         }
 
@@ -363,6 +375,9 @@ public partial class MainForm
             comboWindowResolution.Text = string.IsNullOrWhiteSpace(_settings.WindowContentResolution)
                 ? "1920x1080"
                 : _settings.WindowContentResolution;
+            comboWindowInputMode.SelectedValue = _settings.WindowInputMode == "后台" ? "后台" : "前台";
+            if (comboWindowInputMode.SelectedIndex < 0)
+                comboWindowInputMode.SelectedIndex = 0;
 
             _connectionDetailsVisible = false;
             ApplyConnectionModeUi();
@@ -422,6 +437,7 @@ public partial class MainForm
             _settings.WindowContentResolution = $"{resW}x{resH}";
         else
             _settings.WindowContentResolution = "1920x1080";
+        _settings.WindowInputMode = IsWindowBackgroundMode ? "后台" : "前台";
         _settings.AutoEnhanceMaxEquipment = (int)_numAutoMaxEquipment.Value;
         _settings.AutoEnhanceDisposalMethod = _comboAutoDisposalMethod.SelectedValue as string
             ?? _comboAutoDisposalMethod.Text;
@@ -475,6 +491,7 @@ public partial class MainForm
         _settings.ContinuousRecognition = defaults.ContinuousRecognition;
         _settings.RecognitionIntervalSeconds = defaults.RecognitionIntervalSeconds;
         _settings.AdbAddress = defaults.AdbAddress;
+        _settings.WindowInputMode = defaults.WindowInputMode;
         _settings.AutoEnhanceMaxEquipment = defaults.AutoEnhanceMaxEquipment;
         _settings.AutoEnhanceDisposalMethod = defaults.AutoEnhanceDisposalMethod;
         _settings.MinimumDemandMatchScore = defaults.MinimumDemandMatchScore;

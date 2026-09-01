@@ -8,7 +8,7 @@ namespace TiezhuToolbox;
 /// <summary>软件设置。新增字段必须提供兼容旧文件的默认值。</summary>
 public class AppSettings
 {
-    public const int CurrentVersion = 13;
+    public const int CurrentVersion = 14;
 
     public int Version { get; set; } = CurrentVersion;
     public decimal LeftThreshold { get; set; } = 24;
@@ -24,6 +24,8 @@ public class AppSettings
     public string WindowTitle { get; set; } = "第七史诗";
     /// <summary>窗口模式目标游戏画面分辨率，如 1920x1080。</summary>
     public string WindowContentResolution { get; set; } = "1920x1080";
+    /// <summary>PC 窗口输入：前台（SendInput，抢键鼠）或后台（窗口消息，不抢键鼠）。</summary>
+    public string WindowInputMode { get; set; } = "前台";
     public int AutoEnhanceMaxEquipment { get; set; } = 50;
     public string AutoEnhanceDisposalMethod { get; set; } = "出售";
     // 保留旧 JSON 字段名，兼容已经保存的 settings.json。
@@ -70,6 +72,8 @@ public class AppSettings
             WindowTitle = "第七史诗";
         if (!TryParseWindowContentResolution(WindowContentResolution, out _, out _))
             WindowContentResolution = "1920x1080";
+        if (WindowInputMode is not ("前台" or "后台"))
+            WindowInputMode = "前台";
         LegendarySpeedLadder ??= new();
         LegendarySpeedLadder.Normalize();
         DisabledDemandProfiles ??= new List<string>();

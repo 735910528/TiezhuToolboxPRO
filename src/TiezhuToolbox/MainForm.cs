@@ -73,6 +73,15 @@ public partial class MainForm : Form
         }
     }
 
+    private bool IsWindowBackgroundMode
+    {
+        get
+        {
+            var mode = comboWindowInputMode.SelectedValue as string ?? comboWindowInputMode.Text;
+            return string.Equals(mode, "后台", StringComparison.Ordinal);
+        }
+    }
+
     private void RefreshTargetList()
     {
         if (IsWindowConnectionMode)
@@ -234,7 +243,7 @@ public partial class MainForm : Form
             _settings.WindowContentResolution = $"{targetW}x{targetH}";
             comboWindowResolution.Text = _settings.WindowContentResolution;
             SaveSettingsFromControls();
-            UpdateStatus($"已选用窗口：{window.Title}（已设 {targetW}×{targetH}，实际画面 {width}×{height}）");
+            UpdateStatus($"已选用窗口：{window.Title}（{ (IsWindowBackgroundMode ? "后台" : "前台") }，已设 {targetW}×{targetH}，实际画面 {width}×{height}）");
         }
         catch (Exception ex)
         {
@@ -254,7 +263,7 @@ public partial class MainForm : Form
                 return false;
             }
 
-            session = WindowGameSession.FromWindow(_windows[index]);
+            session = WindowGameSession.FromWindow(_windows[index], IsWindowBackgroundMode);
             error = string.Empty;
             return true;
         }
@@ -294,6 +303,20 @@ public partial class MainForm : Form
         RefreshTargetList();
     }
 
+    private void comboWindowInputMode_SelectedIndexChanged(object sender, AntdUI.IntEventArgs e)
+    {
+        if (_isLoadingSettings)
+            return;
+
+        SaveSettingsFromControls();
+        if (IsWindowConnectionMode)
+        {
+            UpdateStatus(IsWindowBackgroundMode
+                ? "已切换为后台模式：截图和点击不抢前台，窗口可能短暂移动"
+                : "已切换为前台模式：会把游戏拉到最前并占用鼠标");
+        }
+    }
+
     private void btnConnectionStep_Click(object sender, EventArgs e)
     {
         if (_connectionDetailsVisible)
@@ -308,7 +331,7 @@ public partial class MainForm : Form
         ApplyConnectionModeUi();
         RefreshTargetList();
         UpdateStatus(IsWindowConnectionMode
-            ? "已进入 PC 连接参数（默认分辨率 1920×1080，选用后会自动设置）"
+            ? $"已进入 PC 连接参数（{(IsWindowBackgroundMode ? "后台不抢键鼠" : "前台会抢键鼠")}，默认分辨率 1920×1080）"
             : "已进入模拟器连接参数");
     }
 
@@ -324,6 +347,7 @@ public partial class MainForm : Form
             toolTip.SetToolTip(txtAddress, "窗口标题关键字（如 第七史诗），用于过滤窗口列表");
             toolTip.SetToolTip(comboDevices, "选择 PC 客户端游戏窗口");
             toolTip.SetToolTip(btnConnect, "选用窗口并自动设置分辨率");
+            toolTip.SetToolTip(comboWindowInputMode, "前台：SendInput，兼容最好但会抢鼠标；后台：窗口消息，不抢键鼠");
             btnConnect.Text = "选用";
         }
         else

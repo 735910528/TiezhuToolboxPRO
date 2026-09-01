@@ -53,6 +53,9 @@ public static class GameWindowHelper
     private static extern bool IsIconic(IntPtr hWnd);
 
     [DllImport("user32.dll")]
+    private static extern bool IsZoomed(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     [DllImport("user32.dll")]
@@ -208,6 +211,36 @@ public static class GameWindowHelper
             new Point(mainOrigin.X, mainOrigin.Y + drawnTitle),
             mainClient.Width,
             Math.Max(1, mainClient.Height - drawnTitle));
+    }
+
+    public static bool IsMinimized(IntPtr hWnd) => IsAlive(hWnd) && IsIconic(hWnd);
+
+    public static bool IsMaximized(IntPtr hWnd) => IsAlive(hWnd) && IsZoomed(hWnd);
+
+    public static bool TryGetWindowRect(IntPtr hWnd, out Rect rect) => GetWindowRect(hWnd, out rect);
+
+    /// <summary>
+    /// 若窗口被最小化，则以不激活前台的方式恢复，避免抢占用户正在操作的窗口。
+    /// </summary>
+    public static void EnsureShownWithoutActivate(IntPtr hWnd)
+    {
+        if (!IsAlive(hWnd))
+            throw new InvalidOperationException("游戏窗口已关闭，请重新选择窗口");
+
+        if (!IsIconic(hWnd))
+            return;
+
+        ShowWindow(hWnd, 4); // SW_SHOWNOACTIVATE
+        Thread.Sleep(120);
+    }
+
+    /// <summary>移动窗口位置但不改变大小、Z 序和前台焦点。</summary>
+    public static bool TryMoveNoActivate(IntPtr hWnd, int x, int y)
+    {
+        const uint swpNosize = 0x0001;
+        const uint swpNozorder = 0x0004;
+        const uint swpNoactivate = 0x0010;
+        return SetWindowPos(hWnd, IntPtr.Zero, x, y, 0, 0, swpNosize | swpNozorder | swpNoactivate);
     }
 
     public static void FocusWindow(IntPtr hWnd)
