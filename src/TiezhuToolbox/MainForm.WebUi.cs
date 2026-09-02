@@ -358,8 +358,8 @@ public partial class MainForm
                 case "resetSettings":
                     ResetSettings();
                     break;
-                case "openAutoSettings":
-                    ShowAutoEnhanceSettingsWindow();
+                case "bindHotKey":
+                    ToggleBindRecognitionHotKey();
                     break;
             }
         }
@@ -392,8 +392,6 @@ public partial class MainForm
             numLeftThreshold.Value = ReadDecimal("leftThreshold", numLeftThreshold.Value);
             numRightThreshold.Value = ReadDecimal("rightThreshold", numRightThreshold.Value);
             numLevel88Threshold.Value = ReadDecimal("level88Threshold", numLevel88Threshold.Value);
-            if (root.TryGetProperty("recognitionHotKey", out var hotKey) && hotKey.GetString() is { } key)
-                comboRecognitionHotKey.SelectedValue = key;
             if (root.TryGetProperty("continuousRecognition", out var continuous))
                 chkContinuousRecognition.Checked = continuous.GetBoolean();
             var interval = ReadDecimal("recognitionIntervalSeconds", numRecognitionInterval.Value);
@@ -450,11 +448,12 @@ public partial class MainForm
             numLeftThreshold.Value,
             numRightThreshold.Value,
             numLevel88Threshold.Value,
-            comboRecognitionHotKey.SelectedValue as string ?? comboRecognitionHotKey.Text,
+            _recognitionHotKeyText,
             chkContinuousRecognition.Checked,
             numRecognitionInterval.Value,
             Enumerable.Range(1, 12).Select(i => $"F{i}").ToArray(),
-            SettingsRuleLines);
+            SettingsRuleLines,
+            _isBindingHotKey);
 
     private DemandCatalogDto BuildDemandCatalog()
     {
@@ -606,7 +605,8 @@ public partial class MainForm
         bool ContinuousRecognition,
         decimal RecognitionIntervalSeconds,
         string[] HotKeys,
-        string[] Rules);
+        string[] Rules,
+        bool HotKeyListening);
 
     private sealed record DemandCatalogDto(
         bool Loaded,

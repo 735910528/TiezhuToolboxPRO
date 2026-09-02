@@ -53,6 +53,7 @@ public partial class MainForm
                      btnOpenFolder, btnToggleShot, btnCaptureRecognize,
                  })
             control.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+        CreateBindHotKeyButton();
         // Select.List 是 AntdUI 提供的不可编辑选择模式：禁止文字输入，但仍可展开下拉。
         comboConnectionMode.ReadOnly = false;
         comboConnectionMode.List = true;
@@ -132,6 +133,7 @@ public partial class MainForm
         var showPcParams = showDetails && IsWindowConnectionMode;
 
         btnCaptureRecognize.Visible = showEquipmentActions;
+        _btnBindHotKey.Visible = showEquipmentActions;
         btnToggleShot.Visible = showEquipmentActions;
         btnOpenFolder.Visible = showEquipmentActions;
         btnConnectionStep.Visible = true;
@@ -153,6 +155,7 @@ public partial class MainForm
         if (showEquipmentActions)
         {
             PlaceFromRight(btnCaptureRecognize, ScalePixel(112), ref right, gap);
+            PlaceFromRight(_btnBindHotKey, ScalePixel(100), ref right, gap);
             PlaceFromRight(btnToggleShot, ScalePixel(92), ref right, gap);
             PlaceFromRight(btnOpenFolder, ScalePixel(76), ref right, gap);
         }
@@ -362,6 +365,10 @@ public partial class MainForm
             numRightThreshold.Value = _settings.RightThreshold;
             numLevel88Threshold.Value = _settings.Level88Threshold;
             comboRecognitionHotKey.SelectedValue = _settings.RecognitionHotKey;
+            _recognitionHotKeyText = _settings.RecognitionHotKey;
+            if (HotKeyBinding.TryParse(_recognitionHotKeyText, out var loadedHotKey) && loadedHotKey.IsPlainFunctionKey)
+                comboRecognitionHotKey.SelectedValue = loadedHotKey.Key.ToString();
+            RefreshBindHotKeyButton();
             chkContinuousRecognition.Checked = _settings.ContinuousRecognition;
             numRecognitionInterval.Value = _settings.RecognitionIntervalSeconds;
             continuousRecognitionTimer.Interval = Math.Max(100, (int)(_settings.RecognitionIntervalSeconds * 1000));
@@ -421,8 +428,7 @@ public partial class MainForm
         _settings.LeftThreshold = numLeftThreshold.Value;
         _settings.RightThreshold = numRightThreshold.Value;
         _settings.Level88Threshold = numLevel88Threshold.Value;
-        _settings.RecognitionHotKey = comboRecognitionHotKey.SelectedValue as string
-            ?? comboRecognitionHotKey.Text;
+        _settings.RecognitionHotKey = _recognitionHotKeyText;
         _settings.ContinuousRecognition = chkContinuousRecognition.Checked;
         _settings.RecognitionIntervalSeconds = numRecognitionInterval.Value;
         _settings.ConnectionMode = IsWindowConnectionMode ? "窗口" : "ADB";
@@ -482,16 +488,13 @@ public partial class MainForm
 
     private void ResetSettings()
     {
-        if (_registeredRecognitionHotKey != Keys.None)
-        {
-            UnregisterHotKey(Handle, RecognitionHotKeyId);
-            _registeredRecognitionHotKey = Keys.None;
-        }
+        UnregisterRecognitionHotKey();
         var defaults = AppSettings.CreateDefault();
         _settings.LeftThreshold = defaults.LeftThreshold;
         _settings.RightThreshold = defaults.RightThreshold;
         _settings.Level88Threshold = defaults.Level88Threshold;
         _settings.RecognitionHotKey = defaults.RecognitionHotKey;
+        _recognitionHotKeyText = defaults.RecognitionHotKey;
         _settings.ContinuousRecognition = defaults.ContinuousRecognition;
         _settings.RecognitionIntervalSeconds = defaults.RecognitionIntervalSeconds;
         _settings.AdbAddress = defaults.AdbAddress;
@@ -552,6 +555,8 @@ public partial class MainForm
 
     private void MainTabs_SelectedIndexChanged(object sender, AntdUI.IntEventArgs e)
     {
+        if (!IsEquipmentTabActive)
+            StopBindRecognitionHotKey(cancelled: true);
         ApplyHybridPageLayout();
         LayoutTopToolbar();
         ApplyRecognitionAvailability(showHotKeySuccess: false);
@@ -569,11 +574,7 @@ public partial class MainForm
                                              && chkContinuousRecognition.Checked;
         if (!IsEquipmentTabActive || IsAutomationRunning)
         {
-            if (_registeredRecognitionHotKey != Keys.None)
-            {
-                UnregisterHotKey(Handle, RecognitionHotKeyId);
-                _registeredRecognitionHotKey = Keys.None;
-            }
+            UnregisterRecognitionHotKey();
             return;
         }
         RegisterSelectedRecognitionHotKey(showHotKeySuccess);

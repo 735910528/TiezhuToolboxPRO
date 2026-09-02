@@ -185,7 +185,14 @@ button, input, select { font: inherit; }
   background: #fff;
 }
 
-#st-hotkey { width: 92px; }
+#st-hotkey {
+  min-width: 92px;
+  font-weight: 600;
+}
+#st-hotkey.is-listening {
+  border-color: var(--gold);
+  color: var(--gold);
+}
 .check input { width: 16px; height: 16px; }
 
 .btn {

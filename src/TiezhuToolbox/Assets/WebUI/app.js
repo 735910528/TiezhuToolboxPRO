@@ -178,15 +178,8 @@ function renderSettings(data) {
   $("st-right").value = data.rightThreshold;
   $("st-88").value = data.level88Threshold;
   const hotkey = $("st-hotkey");
-  if (!hotkey.options.length) {
-    (data.hotKeys || []).forEach((key) => {
-      const option = document.createElement("option");
-      option.value = key;
-      option.textContent = key;
-      hotkey.appendChild(option);
-    });
-  }
-  hotkey.value = data.recognitionHotKey;
+  hotkey.textContent = data.hotKeyListening ? "按下按键…" : (data.recognitionHotKey || "F2");
+  hotkey.classList.toggle("is-listening", !!data.hotKeyListening);
   $("st-continuous").checked = !!data.continuousRecognition;
   $("st-interval").value = data.recognitionIntervalSeconds;
   $("st-rules").innerHTML = (data.rules || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
@@ -201,7 +194,6 @@ function emitSettings() {
     leftThreshold: Number($("st-left").value),
     rightThreshold: Number($("st-right").value),
     level88Threshold: Number($("st-88").value),
-    recognitionHotKey: $("st-hotkey").value,
     continuousRecognition: $("st-continuous").checked,
     recognitionIntervalSeconds: Number($("st-interval").value),
   });
@@ -225,12 +217,13 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
-["st-left", "st-right", "st-88", "st-hotkey", "st-continuous", "st-interval"].forEach((id) => {
+["st-left", "st-right", "st-88", "st-continuous", "st-interval"].forEach((id) => {
   const node = $(id);
   node.addEventListener("change", emitSettings);
   if (node.tagName === "INPUT" && node.type === "number")
     node.addEventListener("input", emitSettings);
 });
+$("st-hotkey").addEventListener("click", () => post({ type: "bindHotKey" }));
 $("st-open-auto").addEventListener("click", () => post({ type: "openAutoSettings" }));
 $("st-reset").addEventListener("click", () => post({ type: "resetSettings" }));
 

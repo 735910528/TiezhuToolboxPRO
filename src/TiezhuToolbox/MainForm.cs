@@ -7,6 +7,8 @@ namespace TiezhuToolbox;
 public partial class MainForm : Form
 {
     private const int WmHotKey = 0x0312;
+    private const int WmKeyDown = 0x0100;
+    private const int WmSysKeyDown = 0x0104;
     private const int RecognitionHotKeyId = 0x547A;
 
     private static readonly Color AccentColor = Color.FromArgb(26, 115, 232);
@@ -25,6 +27,10 @@ public partial class MainForm : Form
     private Modules.Ocr.EquipmentInfo? _lastInfo;
     private Modules.Ocr.OcrEngine? _ocrEngine;
     private Keys _registeredRecognitionHotKey = Keys.None;
+    private string _recognitionHotKeyText = HotKeyBinding.Default.ToDisplayString();
+    private AntdUI.Button _btnBindHotKey = null!;
+    private bool _isBindingHotKey;
+    private HotKeyBindFilter? _hotKeyBindFilter;
     private bool _isRecognizing;
     private bool _isUpdatingHotKeySelection;
     private int _layoutDpi = 96;
@@ -57,6 +63,7 @@ public partial class MainForm : Form
 
         InitializeTabsAndSettings();
         DoubleBuffered = true;
+        KeyPreview = true;
     }
 
     private void MainForm_Load(object sender, EventArgs e)
@@ -515,45 +522,166 @@ public partial class MainForm : Form
     {
         if (_isLoadingSettings || _isUpdatingHotKeySelection)
             return;
-        SaveSettingsFromControls();
-        if (IsHandleCreated && IsEquipmentTabActive)
-            RegisterSelectedRecognitionHotKey(showSuccess: true);
+        var selected = comboRecognitionHotKey.SelectedValue as string ?? comboRecognitionHotKey.Text;
+        if (HotKeyBinding.TryParse(selected, out var binding))
+            ApplyRecognitionHotKey(binding, registerNow: true, announce: true);
+        else
+            SaveSettingsFromControls();
     }
 
     private void RegisterSelectedRecognitionHotKey(bool showSuccess)
     {
         if (!IsEquipmentTabActive)
             return;
-        // AntdUI.Select 的选中项通过 SelectedValue 读取（Items 里存的就是 "F1"~"F12" 字符串）。
-        var selectedText = comboRecognitionHotKey.SelectedValue as string ?? comboRecognitionHotKey.Text;
-        if (!Enum.TryParse<Keys>(selectedText, out var selectedKey))
-            return;
+        if (!HotKeyBinding.TryParse(_recognitionHotKeyText, out var binding))
+            binding = HotKeyBinding.Default;
 
         var previousKey = _registeredRecognitionHotKey;
-        if (previousKey != Keys.None)
-            UnregisterHotKey(Handle, RecognitionHotKeyId);
-
-        if (RegisterHotKey(Handle, RecognitionHotKeyId, 0, (uint)selectedKey))
+        UnregisterRecognitionHotKey();
+        if (RegisterHotKey(Handle, RecognitionHotKeyId, binding.RegisterModifiers, (uint)binding.Key))
         {
-            _registeredRecognitionHotKey = selectedKey;
+            _registeredRecognitionHotKey = binding.Key;
             if (showSuccess)
-                UpdateStatus($"识别快捷键已设置为 {selectedKey}");
+                UpdateStatus($"识别快捷键已设置为 {binding.ToDisplayString()}");
+            return;
+        }
+
+        if (previousKey != Keys.None
+            && RegisterHotKey(Handle, RecognitionHotKeyId, HotKeyBinding.ModNoRepeat, (uint)previousKey))
+        {
+            _registeredRecognitionHotKey = previousKey;
+            UpdateStatus($"无法注册快捷键 {binding.ToDisplayString()}，可能已被其他程序占用");
             return;
         }
 
         _registeredRecognitionHotKey = Keys.None;
-        if (previousKey != Keys.None && RegisterHotKey(Handle, RecognitionHotKeyId, 0, (uint)previousKey))
-            _registeredRecognitionHotKey = previousKey;
+        UpdateStatus($"无法注册快捷键 {binding.ToDisplayString()}，可能已被其他程序占用");
+    }
 
+    private void UnregisterRecognitionHotKey()
+    {
+        if (_registeredRecognitionHotKey == Keys.None)
+            return;
+        UnregisterHotKey(Handle, RecognitionHotKeyId);
+        _registeredRecognitionHotKey = Keys.None;
+    }
+
+    private void CreateBindHotKeyButton()
+    {
+        _btnBindHotKey = new AntdUI.Button
+        {
+            Text = _recognitionHotKeyText,
+            Anchor = AnchorStyles.Top | AnchorStyles.Left,
+            Size = new Size(ScalePixel(92), ScalePixel(34)),
+            Radius = 6,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+        };
+        _btnBindHotKey.Click += (_, _) => ToggleBindRecognitionHotKey();
+        toolTip.SetToolTip(_btnBindHotKey, "点击后按下空格、回车或 F1–F12，Esc 取消");
+        topPanel.Controls.Add(_btnBindHotKey);
+        RefreshBindHotKeyButton();
+    }
+
+    private void ToggleBindRecognitionHotKey()
+    {
+        if (_isBindingHotKey)
+        {
+            StopBindRecognitionHotKey(cancelled: true);
+            return;
+        }
+
+        _isBindingHotKey = true;
+        _hotKeyBindFilter ??= new HotKeyBindFilter(this);
+        Application.AddMessageFilter(_hotKeyBindFilter);
+        RefreshBindHotKeyButton();
+        PushWebSettings();
+        UpdateStatus("按下空格、回车或 F1–F12 完成绑定，Esc 取消");
+    }
+
+    private void StopBindRecognitionHotKey(bool cancelled)
+    {
+        if (!_isBindingHotKey)
+            return;
+        _isBindingHotKey = false;
+        if (_hotKeyBindFilter != null)
+            Application.RemoveMessageFilter(_hotKeyBindFilter);
+        RefreshBindHotKeyButton();
+        PushWebSettings();
+        if (cancelled)
+            UpdateStatus($"已取消绑定，当前快捷键 {_recognitionHotKeyText}");
+    }
+
+    private bool HandleHotKeyBindMessage(ref Message message)
+    {
+        if (!_isBindingHotKey || message.Msg is not (WmKeyDown or WmSysKeyDown))
+            return false;
+
+        var key = (Keys)(int)message.WParam;
+        if (key is Keys.ControlKey or Keys.ShiftKey or Keys.Menu
+            or Keys.LControlKey or Keys.RControlKey or Keys.LShiftKey or Keys.RShiftKey
+            or Keys.LMenu or Keys.RMenu or Keys.LWin or Keys.RWin)
+        {
+            return true;
+        }
+
+        if (key == Keys.Escape)
+        {
+            StopBindRecognitionHotKey(cancelled: true);
+            return true;
+        }
+
+        if (!HotKeyBinding.TryFromKeyEvent(key, Control.ModifierKeys, out var binding))
+        {
+            UpdateStatus("只支持空格、回车和 F1–F12，请换一个或按 Esc 取消");
+            return true;
+        }
+
+        ApplyRecognitionHotKey(binding, registerNow: IsEquipmentTabActive, announce: true);
+        StopBindRecognitionHotKey(cancelled: false);
+        return true;
+    }
+
+    private void ApplyRecognitionHotKey(HotKeyBinding binding, bool registerNow, bool announce)
+    {
+        _recognitionHotKeyText = binding.ToDisplayString();
         _isUpdatingHotKeySelection = true;
-        comboRecognitionHotKey.SelectedValue = _registeredRecognitionHotKey == Keys.None
-            ? "F2"
-            : _registeredRecognitionHotKey.ToString();
-        _isUpdatingHotKeySelection = false;
+        try
+        {
+            if (binding.IsPlainFunctionKey)
+                comboRecognitionHotKey.SelectedValue = binding.Key.ToString();
+        }
+        finally
+        {
+            _isUpdatingHotKeySelection = false;
+        }
 
         SaveSettingsFromControls();
+        RefreshBindHotKeyButton();
+        if (registerNow && IsHandleCreated)
+            RegisterSelectedRecognitionHotKey(showSuccess: announce);
+        else if (announce)
+            UpdateStatus($"识别快捷键已设置为 {_recognitionHotKeyText}");
+        PushWebSettings();
+    }
 
-        UpdateStatus($"无法注册快捷键 {selectedKey}，可能已被其他程序占用");
+    private void RefreshBindHotKeyButton()
+    {
+        if (_btnBindHotKey == null)
+            return;
+        _btnBindHotKey.Text = _isBindingHotKey ? "按下按键…" : _recognitionHotKeyText;
+        toolTip.SetToolTip(
+            _btnBindHotKey,
+            _isBindingHotKey
+                ? "正在绑定：按下空格、回车或 F1–F12，Esc 取消"
+                : $"当前识别快捷键 {_recognitionHotKeyText}。点击后按下新按键即可绑定");
+        toolTip.SetToolTip(btnCaptureRecognize, $"截图并识别当前游戏画面（{_recognitionHotKeyText}）");
+    }
+
+    private sealed class HotKeyBindFilter(MainForm form) : IMessageFilter
+    {
+        public bool PreFilterMessage(ref Message m) => form.HandleHotKeyBindMessage(ref m);
     }
 
     private void chkContinuousRecognition_CheckedChanged(object sender, AntdUI.BoolEventArgs e)
@@ -589,12 +717,8 @@ public partial class MainForm : Form
 
     protected override void OnHandleDestroyed(EventArgs e)
     {
-        if (_registeredRecognitionHotKey != Keys.None)
-        {
-            UnregisterHotKey(Handle, RecognitionHotKeyId);
-            _registeredRecognitionHotKey = Keys.None;
-        }
-
+        StopBindRecognitionHotKey(cancelled: true);
+        UnregisterRecognitionHotKey();
         base.OnHandleDestroyed(e);
     }
 

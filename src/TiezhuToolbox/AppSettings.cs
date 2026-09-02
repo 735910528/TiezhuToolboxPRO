@@ -9,7 +9,7 @@ namespace TiezhuToolbox;
 /// <summary>软件设置。新增字段必须提供兼容旧文件的默认值。</summary>
 public class AppSettings
 {
-    public const int CurrentVersion = 15;
+    public const int CurrentVersion = 16;
 
     public int Version { get; set; } = CurrentVersion;
     public decimal LeftThreshold { get; set; } = 24;
@@ -61,8 +61,10 @@ public class AppSettings
         StarForgeMaximumChanges = Math.Clamp(StarForgeMaximumChanges, 1, 9999);
         if (AutoEnhanceDisposalMethod is not ("出售" or "分解"))
             AutoEnhanceDisposalMethod = "出售";
-        if (!Enum.TryParse<Keys>(RecognitionHotKey, out var key) || key is < Keys.F1 or > Keys.F12)
-            RecognitionHotKey = "F2";
+        if (!HotKeyBinding.TryParse(RecognitionHotKey, out var hotKey))
+            RecognitionHotKey = HotKeyBinding.Default.ToDisplayString();
+        else
+            RecognitionHotKey = hotKey.ToDisplayString();
         if (ConnectionMode is "PC" or "窗口")
             ConnectionMode = "窗口";
         else if (ConnectionMode is "模拟器" or "ADB")
