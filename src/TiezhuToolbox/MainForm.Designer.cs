@@ -935,7 +935,7 @@ partial class MainForm
         this.lblShotTitle.Location = new Point(16, 9);
         this.lblShotTitle.Name = "lblShotTitle";
         this.lblShotTitle.TabIndex = 0;
-        this.lblShotTitle.Text = "截图预览";
+        this.lblShotTitle.Text = "游戏画面";
         //
         // btnCollapseShot
         //

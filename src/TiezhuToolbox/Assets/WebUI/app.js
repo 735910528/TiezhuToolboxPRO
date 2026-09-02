@@ -32,7 +32,7 @@ function adviceClass(advice) {
 function renderEquipment(data) {
   const shot = $("eq-toggle-shot");
   if (shot)
-    shot.textContent = data?.screenshotWanted ? "收起截图" : "查看截图";
+    shot.textContent = data?.screenshotWanted ? "收起画面" : "游戏画面";
   if (!data || !data.hasResult) {
     $("eq-score").textContent = "—";
     $("eq-meta").textContent = "点击顶部「截图识别」，或使用识别快捷键";

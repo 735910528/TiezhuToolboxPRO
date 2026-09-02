@@ -393,6 +393,7 @@ public partial class MainForm
             comboWindowInputMode.SelectedValue = _settings.WindowInputMode == "后台" ? "后台" : "前台";
             if (comboWindowInputMode.SelectedIndex < 0)
                 comboWindowInputMode.SelectedIndex = 0;
+            _screenshotWanted = _settings.LiveGamePreview;
 
             _connectionDetailsVisible = false;
             ApplyConnectionModeUi();
@@ -429,6 +430,7 @@ public partial class MainForm
         }
 
         PushWebSettings();
+        ApplyLivePreviewVisibility();
     }
 
     private void SaveSettingsFromControls()
@@ -456,6 +458,7 @@ public partial class MainForm
         else
             _settings.WindowContentResolution = "1920x1080";
         _settings.WindowInputMode = IsWindowBackgroundMode ? "后台" : "前台";
+        _settings.LiveGamePreview = _screenshotWanted;
         _settings.GearScanMinimumEnhance = GetGearScanMinimumEnhance();
         _settings.GearScanHeroFilterMode = GetGearScanHeroFilter();
         _settings.AutoEnhanceMaxEquipment = (int)_numAutoMaxEquipment.Value;
@@ -509,6 +512,7 @@ public partial class MainForm
         _settings.RecognitionIntervalSeconds = defaults.RecognitionIntervalSeconds;
         _settings.AdbAddress = defaults.AdbAddress;
         _settings.WindowInputMode = defaults.WindowInputMode;
+        _settings.LiveGamePreview = defaults.LiveGamePreview;
         _settings.GearScanMinimumEnhance = defaults.GearScanMinimumEnhance;
         _settings.GearScanHeroFilterMode = defaults.GearScanHeroFilterMode;
         _settings.AutoEnhanceMaxEquipment = defaults.AutoEnhanceMaxEquipment;

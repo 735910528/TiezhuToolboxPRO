@@ -63,12 +63,14 @@ public partial class MainForm : Form
         InitializeTabsAndSettings();
         DoubleBuffered = true;
         KeyPreview = true;
+        Resize += (_, _) => SyncLivePreviewTimer();
     }
 
     private void MainForm_Load(object sender, EventArgs e)
     {
         RefreshTargetList();
         ApplyRecognitionAvailability(showHotKeySuccess: false);
+        ApplyLivePreviewVisibility();
         if (_webUiSkipped)
             return;
 
@@ -275,7 +277,9 @@ public partial class MainForm : Form
                 return false;
             }
 
-            session = WindowGameSession.FromWindow(_windows[index], IsWindowBackgroundMode);
+            session = new LockedGameSession(
+                WindowGameSession.FromWindow(_windows[index], IsWindowBackgroundMode),
+                _gameCaptureLock);
             error = string.Empty;
             return true;
         }
@@ -288,7 +292,7 @@ public partial class MainForm : Form
             return false;
         }
 
-        session = new AdbGameSession(_devices[deviceIndex].Serial);
+        session = new LockedGameSession(new AdbGameSession(_devices[deviceIndex].Serial), _gameCaptureLock);
         error = string.Empty;
         return true;
     }
@@ -489,8 +493,7 @@ public partial class MainForm : Form
 
             if (resultChanged)
             {
-                pictureBox.Image?.Dispose();
-                pictureBox.Image = capturedBitmap;
+                ApplyLivePreviewFrame(capturedBitmap);
                 capturedBitmap = null;
 
                 ShowEquipmentInfo(info);
@@ -694,6 +697,8 @@ public partial class MainForm : Form
     {
         StopBindRecognitionHotKey(cancelled: true);
         UnregisterRecognitionHotKey();
+        if (_livePreviewTimer != null)
+            _livePreviewTimer.Enabled = false;
         base.OnHandleDestroyed(e);
     }
 
@@ -724,15 +729,12 @@ public partial class MainForm : Form
     private void ToggleScreenshotPreview()
     {
         _screenshotWanted = !_screenshotWanted;
-        ApplyScreenshotPreview();
+        SaveSettingsFromControls();
+        ApplyLivePreviewVisibility();
     }
 
     private void ApplyScreenshotPreview()
-    {
-        btnToggleShot.Text = _screenshotWanted ? "收起截图" : "查看截图";
-        pnlScreenshot.Visible = IsEquipmentTabActive && _screenshotWanted;
-        PushWebEquipment();
-    }
+        => ApplyLivePreviewVisibility();
 
     private void ShowEquipmentInfo(Modules.Ocr.EquipmentInfo info)
     {
@@ -1147,6 +1149,7 @@ public partial class MainForm : Form
             _tabBar.Height = ScalePixel(44);
             RefreshTabBar();
         }
+        ApplyLivePreviewLayout();
         ApplyHybridPageLayout();
     }
 

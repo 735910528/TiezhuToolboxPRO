@@ -9,7 +9,7 @@ namespace TiezhuToolbox;
 /// <summary>软件设置。新增字段必须提供兼容旧文件的默认值。</summary>
 public class AppSettings
 {
-    public const int CurrentVersion = 16;
+    public const int CurrentVersion = 17;
 
     public int Version { get; set; } = CurrentVersion;
     public decimal LeftThreshold { get; set; } = 24;
@@ -27,6 +27,8 @@ public class AppSettings
     public string WindowContentResolution { get; set; } = "1920x1080";
     /// <summary>PC 窗口输入：前台（SendInput，抢键鼠）或后台（窗口消息，不抢键鼠）。</summary>
     public string WindowInputMode { get; set; } = "前台";
+    /// <summary>在软件内显示实时游戏画面，便于后台模式对照进度。</summary>
+    public bool LiveGamePreview { get; set; } = true;
     public int GearScanMinimumEnhance { get; set; } = 6;
     public GearScanHeroFilter GearScanHeroFilterMode { get; set; } = GearScanHeroFilter.All;
     public int AutoEnhanceMaxEquipment { get; set; } = 50;

@@ -86,15 +86,13 @@ public partial class MainForm
             TabStop = false,
         };
 
-        pnlScreenshot.Dock = DockStyle.Right;
-        pnlScreenshot.Width = ScalePixel(300);
         _screenshotWanted = false;
-        pnlScreenshot.Visible = false;
+        CreateLivePreviewHost();
 
         _contentHost.Controls.Add(_nativeHost);
         _contentHost.Controls.Add(_webFallback);
         _contentHost.Controls.Add(_webView);
-        _contentHost.Controls.Add(pnlScreenshot);
+        _contentHost.Controls.Add(_livePreviewHost);
 
         _legacyHost = new Panel
         {
@@ -136,6 +134,8 @@ public partial class MainForm
             Height = 1,
             BackColor = Color.FromArgb(232, 223, 210),
         };
+        bar.Controls.Add(border);
+        CreateLivePreviewTabButton(bar);
         var x = ScalePixel(8);
         for (var i = 0; i < PageTitles.Length; i++)
         {
@@ -171,7 +171,6 @@ public partial class MainForm
             var y = bar.Height - 3;
             e.Graphics.DrawLine(pen, selected.Left + 12, y, selected.Right - 12, y);
         };
-        bar.Controls.Add(border);
         return bar;
     }
 
@@ -255,7 +254,7 @@ public partial class MainForm
             _webFallback.Visible = false;
             _webView!.Visible = true;
             _webView.BringToFront();
-            pnlScreenshot.Visible = index == 0 && _screenshotWanted;
+            ApplyLivePreviewVisibility();
             PostWebMessage(new { type = "page", page = PageIds[index] });
             if (index == 0)
                 PushWebEquipment();
@@ -274,14 +273,14 @@ public partial class MainForm
             _webFallback.Text = "正在加载页面…";
             _webFallback.Visible = true;
             _webFallback.BringToFront();
-            pnlScreenshot.Visible = index == 0 && _screenshotWanted;
+            ApplyLivePreviewVisibility();
             return;
         }
 
         _webFallback.Visible = false;
         _nativeHost.Visible = true;
         _nativeHost.BringToFront();
-        pnlScreenshot.Visible = index == 0 && _screenshotWanted;
+        ApplyLivePreviewVisibility();
         ShowNativePage(index);
     }
 
