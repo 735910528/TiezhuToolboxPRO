@@ -3,6 +3,7 @@ const state = {
   catalog: null,
   selectedSet: null,
   settingsLock: false,
+  captureHotKey: "",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -29,13 +30,22 @@ function adviceClass(advice) {
   return "advice-none";
 }
 
+function applyCaptureHotKey(hotKey) {
+  if (hotKey)
+    state.captureHotKey = hotKey;
+  const capture = $("eq-capture");
+  if (capture && state.captureHotKey)
+    capture.title = `截图并识别当前游戏画面（${state.captureHotKey}）`;
+}
+
 function renderEquipment(data) {
   const shot = $("eq-toggle-shot");
   if (shot)
     shot.textContent = data?.screenshotWanted ? "收起画面" : "游戏画面";
+  applyCaptureHotKey();
   if (!data || !data.hasResult) {
     $("eq-score").textContent = "—";
-    $("eq-meta").textContent = "点击顶部「截图识别」，或使用识别快捷键";
+    $("eq-meta").textContent = "点击「截图识别」，或使用识别快捷键";
     $("eq-advice").className = "advice-badge advice-none";
     $("eq-advice").textContent = "等待识别";
     $("eq-advice-detail").textContent = "识别后会在这里给出继续强化、赌速度、重铸或放弃建议。";
@@ -183,6 +193,7 @@ function renderSettings(data) {
   const hotkey = $("st-hotkey");
   hotkey.textContent = data.hotKeyListening ? "按下按键…" : (data.recognitionHotKey || "F2");
   hotkey.classList.toggle("is-listening", !!data.hotKeyListening);
+  applyCaptureHotKey(data.recognitionHotKey);
   $("st-continuous").checked = !!data.continuousRecognition;
   $("st-interval").value = data.recognitionIntervalSeconds;
   $("st-rules").innerHTML = (data.rules || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
@@ -227,6 +238,7 @@ function escapeHtml(value) {
     node.addEventListener("input", emitSettings);
 });
 $("st-hotkey").addEventListener("click", () => post({ type: "bindHotKey" }));
+$("eq-capture").addEventListener("click", () => post({ type: "captureRecognize" }));
 $("eq-toggle-shot").addEventListener("click", () => post({ type: "toggleScreenshot" }));
 $("st-open-auto").addEventListener("click", () => post({ type: "openAutoSettings" }));
 $("st-open-folder").addEventListener("click", () => post({ type: "openFolder" }));
@@ -255,6 +267,10 @@ window.chrome?.webview?.addEventListener("message", (event) => {
   }
   else if (message.type === "settings")
     renderSettings(message);
+  else if (message.type === "captureState") {
+    $("eq-capture").disabled = !!message.busy;
+    applyCaptureHotKey(message.hotKey);
+  }
   else if (message.type === "init") {
     if (message.settings)
       renderSettings(message.settings);

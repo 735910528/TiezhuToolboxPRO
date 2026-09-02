@@ -13,7 +13,7 @@
         <article class="card score-card">
           <div class="score-kicker">装备分数</div>
           <div id="eq-score" class="score-value">—</div>
-          <div id="eq-meta" class="score-meta">点击顶部「截图识别」，或使用识别快捷键</div>
+          <div id="eq-meta" class="score-meta">点击「截图识别」，或使用识别快捷键</div>
           <div id="eq-advice" class="advice-badge advice-none">等待识别</div>
           <p id="eq-advice-detail" class="advice-detail">识别后会在这里给出继续强化、赌速度、重铸或放弃建议。</p>
           <div class="stat-block">
@@ -28,7 +28,10 @@
               <h2 id="eq-recs-title">套装需求</h2>
               <p class="muted">按匹配度展开查看英雄完整配装</p>
             </div>
-            <button id="eq-toggle-shot" type="button" class="btn btn-ghost">游戏画面</button>
+            <div class="equip-actions">
+              <button id="eq-capture" type="button" class="btn">截图识别</button>
+              <button id="eq-toggle-shot" type="button" class="btn btn-ghost">游戏画面</button>
+            </div>
           </div>
           <div id="eq-recs" class="stack"></div>
         </article>

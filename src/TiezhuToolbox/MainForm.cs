@@ -454,7 +454,7 @@ public partial class MainForm : Form
         _isRecognizing = true;
         var isContinuous = chkContinuousRecognition.Checked;
         if (!isContinuous)
-            btnCaptureRecognize.Enabled = false;
+            SetCaptureRecognizeEnabled(false);
 
         Bitmap? capturedBitmap = null;
         try
@@ -506,8 +506,20 @@ public partial class MainForm : Form
             capturedBitmap?.Dispose();
             _isRecognizing = false;
             if (!isContinuous)
-                btnCaptureRecognize.Enabled = true;
+                SetCaptureRecognizeEnabled(true);
         }
+    }
+
+    private void SetCaptureRecognizeEnabled(bool enabled)
+    {
+        if (btnCaptureRecognize != null)
+            btnCaptureRecognize.Enabled = enabled;
+        PostWebMessage(new
+        {
+            type = "captureState",
+            busy = !enabled,
+            hotKey = _recognitionHotKeyText,
+        });
     }
 
     private void comboRecognitionHotKey_SelectedIndexChanged(object sender, AntdUI.IntEventArgs e)
@@ -645,6 +657,12 @@ public partial class MainForm : Form
         if (btnCaptureRecognize == null)
             return;
         toolTip.SetToolTip(btnCaptureRecognize, $"截图并识别当前游戏画面（{_recognitionHotKeyText}）");
+        PostWebMessage(new
+        {
+            type = "captureState",
+            busy = !btnCaptureRecognize.Enabled,
+            hotKey = _recognitionHotKeyText,
+        });
     }
 
     private sealed class HotKeyBindFilter(MainForm form) : IMessageFilter

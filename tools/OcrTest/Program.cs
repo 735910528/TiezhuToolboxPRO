@@ -1134,12 +1134,12 @@ if (args.Contains("--ui-smoke"))
             CaptureTab("auto-enhance");
             var topPanel = (Control)typeof(TiezhuToolbox.MainForm).GetField("topPanel",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            if (!ReferenceEquals(topPanel.Parent, form))
-                throw new InvalidOperationException("装备工具栏未挂在主窗体");
+            if (topPanel.Visible)
+                throw new InvalidOperationException("顶栏不应再显示");
             var btnCaptureRecognize = (Control)typeof(TiezhuToolbox.MainForm).GetField("btnCaptureRecognize",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            if (topPanel.Visible || btnCaptureRecognize.Visible)
-                throw new InvalidOperationException("非装备页不应显示顶部截图栏");
+            if (btnCaptureRecognize.Visible)
+                throw new InvalidOperationException("非装备页不应显示截图识别按钮");
             var autoStart = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoStart",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             var autoOpenLog = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoOpenLog",
@@ -1338,8 +1338,8 @@ if (args.Contains("--ui-smoke"))
             Application.DoEvents();
             if (!timer.Enabled)
                 throw new InvalidOperationException("返回装备页后持续识别未恢复");
-            if (!btnCaptureRecognize.Visible)
-                throw new InvalidOperationException("装备页应重新显示截图识别按钮");
+            if (!btnCaptureRecognize.Visible || btnCaptureRecognize.Parent?.Name != "heroesHeader")
+                throw new InvalidOperationException("装备页应在套装需求区显示截图识别按钮");
             loadingField.SetValue(form, true);
             continuousCheck.GetType().GetProperty("Checked")!.SetValue(continuousCheck, false);
             loadingField.SetValue(form, false);

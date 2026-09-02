@@ -129,6 +129,7 @@ public partial class MainForm
         _mainTabs.SelectedIndexChanged += MainTabs_SelectedIndexChanged;
 
         CreateHybridShell();
+        RelocateEquipmentActions();
         _equipmentTab.Controls.Add(_equipmentHost);
 
         LoadSettingsIntoControls();
@@ -157,24 +158,33 @@ public partial class MainForm
 
     private void LayoutTopToolbarCore()
     {
-        var margin = ScalePixel(12);
-        var gap = ScalePixel(8);
-        var showEquipmentActions = IsEquipmentTabActive;
-
-        topPanel.Visible = showEquipmentActions;
-        topPanel.Height = ScalePixel(64);
-        btnCaptureRecognize.Visible = showEquipmentActions;
-        btnToggleShot.Visible = showEquipmentActions && !CanUseWebPage;
+        topPanel.Visible = false;
+        topPanel.Height = 0;
         btnOpenFolder.Visible = false;
         btnConnectionStep.Visible = false;
 
-        if (!showEquipmentActions)
+        var showNativeActions = IsEquipmentTabActive && !CanUseWebPage;
+        btnCaptureRecognize.Visible = showNativeActions;
+        btnToggleShot.Visible = showNativeActions;
+        if (!showNativeActions)
             return;
 
-        var right = topPanel.ClientSize.Width - margin;
-        PlaceFromRight(btnCaptureRecognize, ScalePixel(112), ScalePixel(15), ref right, gap);
-        if (btnToggleShot.Visible)
-            PlaceFromRight(btnToggleShot, ScalePixel(92), ScalePixel(15), ref right, gap);
+        btnCaptureRecognize.Size = new Size(ScalePixel(112), ScalePixel(34));
+        btnToggleShot.Size = new Size(ScalePixel(92), ScalePixel(34));
+        btnToggleShot.Text = _screenshotWanted ? "收起画面" : "游戏画面";
+    }
+
+    private void RelocateEquipmentActions()
+    {
+        topPanel.Controls.Remove(btnCaptureRecognize);
+        topPanel.Controls.Remove(btnToggleShot);
+        btnCaptureRecognize.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+        btnToggleShot.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+        btnCaptureRecognize.Margin = new Padding(ScalePixel(16), 0, ScalePixel(8), 0);
+        btnToggleShot.Margin = Padding.Empty;
+        heroesHeader.WrapContents = false;
+        heroesHeader.Controls.Add(btnCaptureRecognize);
+        heroesHeader.Controls.Add(btnToggleShot);
     }
 
     private Control CreateConnectionContent()

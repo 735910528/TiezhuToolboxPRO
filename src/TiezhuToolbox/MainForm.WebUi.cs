@@ -104,8 +104,8 @@ public partial class MainForm
         _legacyHost.Controls.Add(_mainTabs);
 
         BackColor = Color.FromArgb(243, 238, 228);
-        topPanel.BackColor = Color.White;
-        topPanel.Dock = DockStyle.Top;
+        topPanel.Visible = false;
+        topPanel.Height = 0;
         _tabBar.Dock = DockStyle.Top;
 
         Controls.Add(_legacyHost);
@@ -367,6 +367,9 @@ public partial class MainForm
                 case "toggleScreenshot":
                     ToggleScreenshotPreview();
                     break;
+                case "captureRecognize":
+                    _ = CaptureAndRecognizeAsync();
+                    break;
                 case "openFolder":
                     btnOpenFolder_Click(this, EventArgs.Empty);
                     break;
@@ -516,7 +519,7 @@ public partial class MainForm
                 "equipment",
                 false,
                 "—",
-                "点击顶部「截图识别」，或使用识别快捷键",
+                "点击「截图识别」，或使用识别快捷键",
                 "None",
                 "等待识别",
                 "识别后会在这里给出继续强化、赌速度、重铸或放弃建议。",
