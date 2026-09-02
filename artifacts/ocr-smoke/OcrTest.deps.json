@@ -1,0 +1,318 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "OcrTest/1.0.0": {
+        "dependencies": {
+          "铁柱工具箱PRO": "1.0.7",
+          "Microsoft.Web.WebView2.Core": "1.0.4191.47",
+          "Microsoft.Web.WebView2.WinForms": "1.0.4191.47",
+          "Microsoft.Web.WebView2.Wpf": "1.0.4191.47",
+          "铁柱工具箱PRO.Reference": "1.0.7.0",
+          "runtimepack.Microsoft.Windows.SDK.NET.Ref": "10.0.19041.57"
+        },
+        "runtime": {
+          "OcrTest.dll": {}
+        }
+      },
+      "runtimepack.Microsoft.Windows.SDK.NET.Ref/10.0.19041.57": {
+        "runtime": {
+          "Microsoft.Windows.SDK.NET.dll": {
+            "assemblyVersion": "10.0.19041.38",
+            "fileVersion": "10.0.19041.55"
+          },
+          "WinRT.Runtime.dll": {
+            "assemblyVersion": "2.2.0.0",
+            "fileVersion": "2.2.0.48161"
+          }
+        }
+      },
+      "AntdUI/2.4.3": {
+        "runtime": {
+          "lib/net9.0-windows7.0/AntdUI.dll": {
+            "assemblyVersion": "2.4.3.0",
+            "fileVersion": "2.4.3.0"
+          }
+        }
+      },
+      "Microsoft.ML.OnnxRuntime/1.27.1": {
+        "dependencies": {
+          "Microsoft.ML.OnnxRuntime.Managed": "1.27.1"
+        },
+        "runtimeTargets": {
+          "runtimes/android/native/onnxruntime.aar": {
+            "rid": "android",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/ios/native/onnxruntime.xcframework.zip": {
+            "rid": "ios",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/linux-arm64/native/libonnxruntime.so": {
+            "rid": "linux-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/linux-arm64/native/libonnxruntime_providers_shared.so": {
+            "rid": "linux-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/linux-x64/native/libonnxruntime.so": {
+            "rid": "linux-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/linux-x64/native/libonnxruntime_providers_shared.so": {
+            "rid": "linux-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/osx-arm64/native/libonnxruntime.dylib": {
+            "rid": "osx-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-arm64/native/onnxruntime.dll": {
+            "rid": "win-arm64",
+            "assetType": "native",
+            "fileVersion": "1.27.26.709"
+          },
+          "runtimes/win-arm64/native/onnxruntime.lib": {
+            "rid": "win-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-arm64/native/onnxruntime_providers_shared.dll": {
+            "rid": "win-arm64",
+            "assetType": "native",
+            "fileVersion": "1.27.26.709"
+          },
+          "runtimes/win-arm64/native/onnxruntime_providers_shared.lib": {
+            "rid": "win-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x64/native/onnxruntime.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "1.27.26.709"
+          },
+          "runtimes/win-x64/native/onnxruntime.lib": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x64/native/onnxruntime_providers_shared.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "1.27.26.709"
+          },
+          "runtimes/win-x64/native/onnxruntime_providers_shared.lib": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      },
+      "Microsoft.ML.OnnxRuntime.Managed/1.27.1": {
+        "dependencies": {
+          "System.Numerics.Tensors": "9.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.ML.OnnxRuntime.dll": {
+            "assemblyVersion": "1.27.1.0",
+            "fileVersion": "1.27.1.0"
+          }
+        }
+      },
+      "Microsoft.Web.WebView2/1.0.4191.47": {
+        "runtimeTargets": {
+          "runtimes/win-arm64/native/WebView2Loader.dll": {
+            "rid": "win-arm64",
+            "assetType": "native",
+            "fileVersion": "1.0.4191.47"
+          },
+          "runtimes/win-x64/native/WebView2Loader.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "1.0.4191.47"
+          },
+          "runtimes/win-x86/native/WebView2Loader.dll": {
+            "rid": "win-x86",
+            "assetType": "native",
+            "fileVersion": "1.0.4191.47"
+          }
+        }
+      },
+      "OpenCvSharp4/4.13.0.20260627": {
+        "runtime": {
+          "lib/net8.0/OpenCvSharp.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.0.0"
+          }
+        }
+      },
+      "OpenCvSharp4.runtime.win/4.13.0.20260627": {
+        "runtimeTargets": {
+          "runtimes/win-x64/native/OpenCvSharpExtern.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x64/native/opencv_videoio_ffmpeg4130_64.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "2025.12.0.0"
+          }
+        }
+      },
+      "System.Numerics.Tensors/9.0.0": {
+        "runtime": {
+          "lib/net9.0/System.Numerics.Tensors.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.24.52809"
+          }
+        }
+      },
+      "铁柱工具箱PRO/1.0.7": {
+        "dependencies": {
+          "AntdUI": "2.4.3",
+          "Microsoft.ML.OnnxRuntime": "1.27.1",
+          "Microsoft.Web.WebView2": "1.0.4191.47",
+          "OpenCvSharp4": "4.13.0.20260627",
+          "OpenCvSharp4.runtime.win": "4.13.0.20260627"
+        },
+        "runtime": {
+          "铁柱工具箱PRO.dll": {
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      },
+      "Microsoft.Web.WebView2.Core/1.0.4191.47": {
+        "runtime": {
+          "Microsoft.Web.WebView2.Core.dll": {
+            "assemblyVersion": "1.0.4191.47",
+            "fileVersion": "1.0.4191.47"
+          }
+        }
+      },
+      "Microsoft.Web.WebView2.WinForms/1.0.4191.47": {
+        "runtime": {
+          "Microsoft.Web.WebView2.WinForms.dll": {
+            "assemblyVersion": "1.0.4191.47",
+            "fileVersion": "1.0.4191.47"
+          }
+        }
+      },
+      "Microsoft.Web.WebView2.Wpf/1.0.4191.47": {
+        "runtime": {
+          "Microsoft.Web.WebView2.Wpf.dll": {
+            "assemblyVersion": "1.0.4191.47",
+            "fileVersion": "1.0.4191.47"
+          }
+        }
+      },
+      "铁柱工具箱PRO.Reference/1.0.7.0": {
+        "runtime": {
+          "铁柱工具箱PRO.dll": {
+            "assemblyVersion": "1.0.7.0",
+            "fileVersion": "1.0.7.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "OcrTest/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "runtimepack.Microsoft.Windows.SDK.NET.Ref/10.0.19041.57": {
+      "type": "runtimepack",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AntdUI/2.4.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hzdWluqUckjOIgtnArryfZgfHrbUPDhK4qZAt9nrAmkF0UnptmQcRm3wOcVMBr88c0mBfwxoczDzuS/txoWacw==",
+      "path": "antdui/2.4.3",
+      "hashPath": "antdui.2.4.3.nupkg.sha512"
+    },
+    "Microsoft.ML.OnnxRuntime/1.27.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-lVD57zo77erw9oLC2obkKkMOM+CqbtwZuztfXQxEy3oJBOWmDKweto+c+N/Mh/FUoVRRFfsR9KaMX+aM+XLh+Q==",
+      "path": "microsoft.ml.onnxruntime/1.27.1",
+      "hashPath": "microsoft.ml.onnxruntime.1.27.1.nupkg.sha512"
+    },
+    "Microsoft.ML.OnnxRuntime.Managed/1.27.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7vZTjZzuSP6XC47lbRN0xI9+6YDOChxKjmUmb80q7YC8Nb7zQUVrETFGLXlFfYWjvlb8/4J+w+L33gBTCpLMKA==",
+      "path": "microsoft.ml.onnxruntime.managed/1.27.1",
+      "hashPath": "microsoft.ml.onnxruntime.managed.1.27.1.nupkg.sha512"
+    },
+    "Microsoft.Web.WebView2/1.0.4191.47": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Snb6mlTpuz6ZFjWMwIdg28Xp6kAUMy3zaLUyGbFSaw+/AJKlwoX8EiaWJ1eUMfKyJHksPkFjJHl1LIB7kX+0AQ==",
+      "path": "microsoft.web.webview2/1.0.4191.47",
+      "hashPath": "microsoft.web.webview2.1.0.4191.47.nupkg.sha512"
+    },
+    "OpenCvSharp4/4.13.0.20260627": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-nYk95jkyYY9f0sF5KqZ3OB1SWkmqsfV7eN0ROiQds/rxpSn0v1G0QIedMbwuqbdPhvQnOIG2DDmpkLnHEJMh8Q==",
+      "path": "opencvsharp4/4.13.0.20260627",
+      "hashPath": "opencvsharp4.4.13.0.20260627.nupkg.sha512"
+    },
+    "OpenCvSharp4.runtime.win/4.13.0.20260627": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-POIxR+CTpwHJIdam6wd8U2fprWv5QnIUw50jw79WEGb37He3T1h11SdtwSj9p2PLSfrzonMjO2t71wqi5uFsoQ==",
+      "path": "opencvsharp4.runtime.win/4.13.0.20260627",
+      "hashPath": "opencvsharp4.runtime.win.4.13.0.20260627.nupkg.sha512"
+    },
+    "System.Numerics.Tensors/9.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hyJB4UlpAi19Xr9AXzu2NuagKC4lPfHObNMEAA0HmqFz2rX7wKgzeYzO/jM/eBHDhnUGFFEjk5cOoJaxqg5J4A==",
+      "path": "system.numerics.tensors/9.0.0",
+      "hashPath": "system.numerics.tensors.9.0.0.nupkg.sha512"
+    },
+    "铁柱工具箱PRO/1.0.7": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Web.WebView2.Core/1.0.4191.47": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Web.WebView2.WinForms/1.0.4191.47": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Web.WebView2.Wpf/1.0.4191.47": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "铁柱工具箱PRO.Reference/1.0.7.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

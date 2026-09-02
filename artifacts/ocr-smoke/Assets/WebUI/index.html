@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>铁柱工具箱PRO</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <main id="app">
+    <section id="page-equipment" class="page is-active" data-page="equipment">
+      <div class="equip-grid">
+        <article class="card score-card">
+          <div class="score-kicker">装备分数</div>
+          <div id="eq-score" class="score-value">—</div>
+          <div id="eq-meta" class="score-meta">点击「截图识别」，或使用识别快捷键</div>
+          <div id="eq-advice" class="advice-badge advice-none">等待识别</div>
+          <p id="eq-advice-detail" class="advice-detail">识别后会在这里给出继续强化、赌速度、重铸或放弃建议。</p>
+          <div class="stat-block">
+            <div id="eq-main" class="stat-main">主属性：—</div>
+            <div id="eq-set" class="stat-set">套装：—</div>
+            <ul id="eq-subs" class="sub-list"></ul>
+          </div>
+        </article>
+        <article class="card recs-card">
+          <div class="card-head recs-head">
+            <div>
+              <h2 id="eq-recs-title">套装需求</h2>
+              <p class="muted">按匹配度展开查看英雄完整配装</p>
+            </div>
+            <div class="equip-actions">
+              <button id="eq-capture" type="button" class="btn">截图识别</button>
+              <button id="eq-toggle-shot" type="button" class="btn btn-ghost">游戏画面</button>
+            </div>
+          </div>
+          <div id="eq-recs" class="stack"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="page-demand" class="page" data-page="demand">
+      <aside id="demand-sets" class="set-rail"></aside>
+      <article class="card demand-main">
+        <div class="card-head">
+          <h2 id="demand-title">套装需求分析</h2>
+          <p id="demand-source" class="muted">内置数据</p>
+        </div>
+        <div id="demand-profiles" class="stack"></div>
+      </article>
+    </section>
+
+    <section id="page-settings" class="page" data-page="settings">
+      <article class="card settings-card">
+        <h2>软件设置</h2>
+        <p class="muted">分数阈值和识别快捷键立即生效；自动强化规则仍在独立窗口中配置。</p>
+
+        <h3>强化分数</h3>
+        <p class="hint">85 级按左/右三件阈值每跳 +6；88 级使用独立阈值，每跳 +7。</p>
+        <div class="field-row">
+          <label>左三件 <input id="st-left" type="number" min="0" max="200" step="1"></label>
+          <label>右三件 <input id="st-right" type="number" min="0" max="200" step="1"></label>
+          <label>88 级 <input id="st-88" type="number" min="0" max="200" step="1"></label>
+        </div>
+
+        <h3>识别控制</h3>
+        <p class="hint">全局快捷键和持续识别只在「装备」页生效。快捷键支持空格、回车和 F1–F12。</p>
+        <div class="field-row">
+          <label>快捷键
+            <button id="st-hotkey" type="button" class="btn btn-ghost">F2</button>
+          </label>
+          <label class="check">
+            <input id="st-continuous" type="checkbox"> 持续识别
+          </label>
+          <label>间隔（秒） <input id="st-interval" type="number" min="0.1" max="60" step="0.1"></label>
+        </div>
+
+        <h3>自动强化</h3>
+        <p class="hint">装备处理方式、最多处理、需求匹配度与赌速度规则在独立窗口中配置。</p>
+        <div class="field-row">
+          <button id="st-open-auto" type="button" class="btn">打开自动强化设置</button>
+          <button id="st-open-folder" type="button" class="btn btn-ghost">打开截图目录</button>
+        </div>
+
+        <h3>自动规则说明</h3>
+        <ul id="st-rules" class="rules"></ul>
+        <div class="field-row">
+          <button id="st-reset" type="button" class="btn btn-ghost">恢复默认设置</button>
+        </div>
+      </article>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
