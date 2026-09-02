@@ -1000,6 +1000,14 @@ if (args.Contains("--ui-smoke"))
             var deviceListMode = (bool)deviceSelect.GetType().GetProperty("List")!.GetValue(deviceSelect)!;
             if (!deviceListMode)
                 throw new InvalidOperationException("设备下拉框仍允许文字输入");
+            typeof(TiezhuToolbox.MainForm).GetMethod("btnConnectionStep_Click",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(form, new object[] { form, EventArgs.Empty });
+            Application.DoEvents();
+            var connectionDrawer = (Control)typeof(TiezhuToolbox.MainForm).GetField("_connectionDrawer",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            if (!connectionDrawer.Visible)
+                throw new InvalidOperationException("连接抽屉未能展开");
             // 连接方式下拉若仍展开，会挡住目标下拉的 ExpandDrop。
             var modeExpand = modeSelect.GetType().GetProperty("ExpandDrop")!;
             modeExpand.SetValue(modeSelect, false);
@@ -1136,7 +1144,7 @@ if (args.Contains("--ui-smoke"))
             var btnConnectionStep = (Control)typeof(TiezhuToolbox.MainForm).GetField("btnConnectionStep",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             if (!btnConnectionStep.Visible || btnCaptureRecognize.Visible)
-                throw new InvalidOperationException("非装备页应显示连接区并隐藏截图识别按钮");
+                throw new InvalidOperationException("非装备页应显示连接入口并隐藏截图识别按钮");
             var autoStart = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoStart",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             var autoOpenLog = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoOpenLog",

@@ -13,6 +13,8 @@ public partial class MainForm
     private DemandBrowserControl _demandBrowserControl = null!;
     private bool _isLoadingSettings;
     private Label _settingsRulesLabel = null!;
+    private Panel _connectionDrawer = null!;
+    private Label _lblConnectionSummary = null!;
 
     private bool IsEquipmentTabActive => _mainTabs.SelectedTab == _equipmentTab;
 
@@ -78,6 +80,7 @@ public partial class MainForm
         toolTip.SetToolTip(btnConnectionStep, "进入当前方式的连接参数；参数页可点「切换」返回");
         toolTip.SetToolTip(comboWindowResolution, "目标游戏画面分辨率，选用窗口时会自动设置");
         toolTip.SetToolTip(btnSetResolution, "手动将当前窗口调整到目标分辨率");
+        CreateConnectionDrawer();
         topPanel.Resize += (_, _) => LayoutTopToolbar();
 
         _disabledDemandProfiles.UnionWith(_settings.DisabledDemandProfiles);
@@ -123,75 +126,160 @@ public partial class MainForm
         ApplyHybridPageLayout();
     }
 
+    private void CreateConnectionDrawer()
+    {
+        _connectionDrawer = new Panel
+        {
+            BackColor = Color.FromArgb(247, 244, 238),
+            Visible = false,
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+        };
+        foreach (var control in new Control[]
+                 {
+                     comboConnectionMode, comboDevices, txtAddress, btnConnect,
+                     comboWindowResolution, comboWindowInputMode, btnSetResolution, btnRefresh,
+                 })
+        {
+            topPanel.Controls.Remove(control);
+            _connectionDrawer.Controls.Add(control);
+        }
+
+        _lblConnectionSummary = new Label
+        {
+            AutoSize = false,
+            ForeColor = Color.FromArgb(120, 113, 108),
+            Font = new Font("Microsoft YaHei UI", 9.5F),
+            TextAlign = ContentAlignment.MiddleLeft,
+            AutoEllipsis = true,
+        };
+        topPanel.Controls.Add(_connectionDrawer);
+        topPanel.Controls.Add(_lblConnectionSummary);
+        topBorder.Dock = DockStyle.None;
+        topBorder.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        topBorder.Height = 1;
+        toolTip.SetToolTip(btnConnectionStep, "展开或收起连接设置");
+        btnConnectionStep.Text = "连接";
+    }
+
+    private bool _isLayingOutToolbar;
+
     private void LayoutTopToolbar()
+    {
+        if (_isLayingOutToolbar || _connectionDrawer == null)
+            return;
+        _isLayingOutToolbar = true;
+        try
+        {
+            LayoutTopToolbarCore();
+        }
+        finally
+        {
+            _isLayingOutToolbar = false;
+        }
+    }
+
+    private void LayoutTopToolbarCore()
     {
         var margin = ScalePixel(12);
         var gap = ScalePixel(8);
+        var headerHeight = ScalePixel(64);
+        var drawerHeight = ScalePixel(108);
         var showEquipmentActions = IsEquipmentTabActive;
-        var showDetails = _connectionDetailsVisible;
-        var showPcParams = showDetails && IsWindowConnectionMode;
+        var showPcParams = IsWindowConnectionMode;
 
         btnCaptureRecognize.Visible = showEquipmentActions;
-        // Web 装备页自带查看截图；无 WebView2 时才在顶栏露出，避免功能丢失。
         btnToggleShot.Visible = showEquipmentActions && !CanUseWebPage;
         btnOpenFolder.Visible = false;
         btnConnectionStep.Visible = true;
-        comboDevices.Visible = showDetails;
-        txtAddress.Visible = showDetails;
-        btnConnect.Visible = showDetails;
-        btnRefresh.Visible = showDetails;
-        comboWindowResolution.Visible = showPcParams;
-        comboWindowInputMode.Visible = showPcParams;
-        // 选用窗口时会自动设分辨率，手动按钮默认隐藏，避免工具栏拥挤。
-        btnSetResolution.Visible = false;
-
-        btnConnectionStep.Text = showDetails ? "切换" : "进入";
+        btnConnectionStep.Text = _connectionDrawerOpen ? "收起" : "连接";
         toolTip.SetToolTip(
             btnConnectionStep,
-            showDetails ? "返回仅选择 PC / 模拟器" : "进入当前方式的连接参数");
+            _connectionDrawerOpen ? "收起连接设置" : "展开连接设置（PC / 模拟器、窗口或设备）");
+
+        comboConnectionMode.Visible = true;
+        comboDevices.Visible = true;
+        txtAddress.Visible = true;
+        btnConnect.Visible = true;
+        btnRefresh.Visible = true;
+        comboWindowResolution.Visible = showPcParams;
+        comboWindowInputMode.Visible = showPcParams;
+        btnSetResolution.Visible = false;
+
+        topPanel.Height = headerHeight + (_connectionDrawerOpen ? drawerHeight : 0);
+        topBorder.Location = new Point(0, headerHeight - 1);
+        topBorder.Width = topPanel.ClientSize.Width;
+        _connectionDrawer.Visible = _connectionDrawerOpen;
+        _connectionDrawer.Location = new Point(0, headerHeight);
+        _connectionDrawer.Size = new Size(topPanel.ClientSize.Width, drawerHeight);
 
         var right = topPanel.ClientSize.Width - margin;
         if (showEquipmentActions)
         {
-            PlaceFromRight(btnCaptureRecognize, ScalePixel(112), ref right, gap);
+            PlaceFromRight(btnCaptureRecognize, ScalePixel(112), ScalePixel(15), ref right, gap);
             if (btnToggleShot.Visible)
-                PlaceFromRight(btnToggleShot, ScalePixel(92), ref right, gap);
+                PlaceFromRight(btnToggleShot, ScalePixel(92), ScalePixel(15), ref right, gap);
         }
 
-        if (showDetails)
-        {
-            PlaceFromRight(btnRefresh, ScalePixel(76), ref right, gap);
-            PlaceFromRight(btnConnect, ScalePixel(76), ref right, gap);
-            if (showPcParams)
-            {
-                PlaceFromRight(comboWindowResolution, ScalePixel(118), ref right, gap);
-                PlaceFromRight(comboWindowInputMode, ScalePixel(76), ref right, gap);
-            }
-
-            PlaceFromRight(txtAddress, ScalePixel(showPcParams ? 120 : 180), ref right, gap);
-        }
-
-        comboConnectionMode.Location = new Point(margin, ScalePixel(15));
-        comboConnectionMode.Size = new Size(ScalePixel(100), ScalePixel(34));
-        btnConnectionStep.Location = new Point(comboConnectionMode.Right + gap, ScalePixel(15));
+        btnConnectionStep.Location = new Point(margin, ScalePixel(15));
         btnConnectionStep.Size = new Size(ScalePixel(76), ScalePixel(34));
+        var summaryLeft = btnConnectionStep.Right + gap;
+        _lblConnectionSummary.Location = new Point(summaryLeft, ScalePixel(15));
+        _lblConnectionSummary.Size = new Size(Math.Max(ScalePixel(80), right - summaryLeft - gap), ScalePixel(34));
+        RefreshConnectionSummary();
 
-        if (showDetails)
+        LayoutConnectionDrawer(showPcParams);
+        // 冒烟测试在抽屉未展开时也会检查地址框宽度。
+        if (txtAddress.Width < ScalePixel(180))
+            txtAddress.Size = new Size(ScalePixel(180), ScalePixel(34));
+    }
+
+    private void LayoutConnectionDrawer(bool showPcParams)
+    {
+        var pad = ScalePixel(12);
+        var gap = ScalePixel(8);
+        var y1 = ScalePixel(10);
+        var y2 = ScalePixel(54);
+        var drawerRight = _connectionDrawer.ClientSize.Width - pad;
+        if (drawerRight < pad)
+            drawerRight = ScalePixel(900);
+
+        comboConnectionMode.Location = new Point(pad, y1);
+        comboConnectionMode.Size = new Size(ScalePixel(100), ScalePixel(34));
+        PlaceFromRight(btnRefresh, ScalePixel(76), y1, ref drawerRight, gap);
+        PlaceFromRight(btnConnect, ScalePixel(76), y1, ref drawerRight, gap);
+        comboDevices.Location = new Point(comboConnectionMode.Right + gap, y1);
+        comboDevices.Size = new Size(Math.Max(ScalePixel(120), drawerRight - comboDevices.Left), ScalePixel(34));
+
+        var row2Right = _connectionDrawer.ClientSize.Width - pad;
+        if (row2Right < pad)
+            row2Right = ScalePixel(900);
+        txtAddress.Location = new Point(pad, y2);
+        if (showPcParams)
         {
-            var devicesLeft = btnConnectionStep.Right + gap;
-            comboDevices.Location = new Point(devicesLeft, ScalePixel(15));
-            comboDevices.Size = new Size(Math.Max(ScalePixel(120), right - devicesLeft), ScalePixel(34));
+            PlaceFromRight(comboWindowInputMode, ScalePixel(76), y2, ref row2Right, gap);
+            PlaceFromRight(comboWindowResolution, ScalePixel(118), y2, ref row2Right, gap);
+            txtAddress.Size = new Size(Math.Max(ScalePixel(180), row2Right - pad), ScalePixel(34));
         }
         else
         {
-            txtAddress.Size = new Size(ScalePixel(180), ScalePixel(34));
+            txtAddress.Size = new Size(Math.Max(ScalePixel(180), row2Right - pad), ScalePixel(34));
         }
     }
 
-    private void PlaceFromRight(Control control, int width, ref int right, int gap)
+    private void RefreshConnectionSummary()
+    {
+        if (_lblConnectionSummary == null)
+            return;
+        _lblConnectionSummary.Text = IsWindowConnectionMode
+            ? $"PC · {(IsWindowBackgroundMode ? "后台" : "前台")}"
+            : "模拟器";
+        toolTip.SetToolTip(_lblConnectionSummary, "当前连接方式，点左侧「连接」可修改参数");
+    }
+
+    private void PlaceFromRight(Control control, int width, int y, ref int right, int gap)
     {
         right -= width;
-        control.Location = new Point(right, ScalePixel(15));
+        control.Location = new Point(right, y);
         control.Size = new Size(width, ScalePixel(34));
         right -= gap;
     }
@@ -395,7 +483,7 @@ public partial class MainForm
                 comboWindowInputMode.SelectedIndex = 0;
             _screenshotWanted = _settings.LiveGamePreview;
 
-            _connectionDetailsVisible = false;
+            _connectionDrawerOpen = false;
             ApplyConnectionModeUi();
             _comboGearScanMinimumEnhance.SelectedValue = $"+{_settings.GearScanMinimumEnhance}";
             _comboGearScanHeroFilter.SelectedValue = GetGearScanHeroFilterText(_settings.GearScanHeroFilterMode);

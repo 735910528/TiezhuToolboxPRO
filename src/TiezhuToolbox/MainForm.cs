@@ -37,8 +37,8 @@ public partial class MainForm : Form
     // AntdUI.Select 不支持 DataSource 绑定，目标列表单独保存，SelectedIndex 对应下标。
     private List<AdbDeviceInfo> _devices = new();
     private List<GameWindowInfo> _windows = new();
-    /// <summary>是否已进入具体连接参数（折叠时顶部只显示 PC/模拟器）。</summary>
-    private bool _connectionDetailsVisible;
+    /// <summary>是否已展开顶部连接抽屉。</summary>
+    private bool _connectionDrawerOpen;
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -312,8 +312,7 @@ public partial class MainForm : Form
                 ? "第七史诗"
                 : txtAddress.Text.Trim();
 
-        // 选择 PC / 模拟器后自动进入对应参数页。
-        _connectionDetailsVisible = true;
+        // 选择 PC / 模拟器后只更新抽屉内容，不把参数摊回顶栏。
         ApplyConnectionModeUi();
         SaveSettingsFromControls();
         RefreshTargetList();
@@ -325,6 +324,7 @@ public partial class MainForm : Form
             return;
 
         SaveSettingsFromControls();
+        RefreshConnectionSummary();
         if (IsWindowConnectionMode)
         {
             UpdateStatus(IsWindowBackgroundMode
@@ -335,20 +335,19 @@ public partial class MainForm : Form
 
     private void btnConnectionStep_Click(object sender, EventArgs e)
     {
-        if (_connectionDetailsVisible)
+        _connectionDrawerOpen = !_connectionDrawerOpen;
+        if (_connectionDrawerOpen)
         {
-            _connectionDetailsVisible = false;
-            LayoutTopToolbar();
-            UpdateStatus("已返回连接方式选择（PC / 模拟器）");
+            ApplyConnectionModeUi();
+            RefreshTargetList();
+            UpdateStatus(IsWindowConnectionMode
+                ? $"已展开 PC 连接设置（{(IsWindowBackgroundMode ? "后台不抢键鼠" : "前台会抢键鼠")}）"
+                : "已展开模拟器连接设置");
             return;
         }
 
-        _connectionDetailsVisible = true;
-        ApplyConnectionModeUi();
-        RefreshTargetList();
-        UpdateStatus(IsWindowConnectionMode
-            ? $"已进入 PC 连接参数（{(IsWindowBackgroundMode ? "后台不抢键鼠" : "前台会抢键鼠")}，默认分辨率 1920×1080）"
-            : "已进入模拟器连接参数");
+        LayoutTopToolbar();
+        UpdateStatus("已收起连接设置");
     }
 
     private void ApplyConnectionModeUi()
