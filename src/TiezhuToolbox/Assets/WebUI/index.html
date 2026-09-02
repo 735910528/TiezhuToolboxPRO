@@ -23,9 +23,12 @@
           </div>
         </article>
         <article class="card recs-card">
-          <div class="card-head">
-            <h2 id="eq-recs-title">套装需求</h2>
-            <p class="muted">按匹配度展开查看英雄完整配装</p>
+          <div class="card-head recs-head">
+            <div>
+              <h2 id="eq-recs-title">套装需求</h2>
+              <p class="muted">按匹配度展开查看英雄完整配装</p>
+            </div>
+            <button id="eq-toggle-shot" type="button" class="btn btn-ghost">查看截图</button>
           </div>
           <div id="eq-recs" class="stack"></div>
         </article>
@@ -57,7 +60,7 @@
         </div>
 
         <h3>识别控制</h3>
-        <p class="hint">全局快捷键和持续识别只在「装备强化」页生效。快捷键支持空格、回车和 F1–F12。</p>
+        <p class="hint">全局快捷键和持续识别只在「装备」页生效。快捷键支持空格、回车和 F1–F12。</p>
         <div class="field-row">
           <label>快捷键
             <button id="st-hotkey" type="button" class="btn btn-ghost">F2</button>
@@ -72,6 +75,7 @@
         <p class="hint">装备处理方式、最多处理、需求匹配度与赌速度规则在独立窗口中配置。</p>
         <div class="field-row">
           <button id="st-open-auto" type="button" class="btn">打开自动强化设置</button>
+          <button id="st-open-folder" type="button" class="btn btn-ghost">打开截图目录</button>
         </div>
 
         <h3>自动规则说明</h3>

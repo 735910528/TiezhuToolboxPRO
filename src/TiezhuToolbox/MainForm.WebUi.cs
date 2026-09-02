@@ -45,7 +45,7 @@ public partial class MainForm
 
     private static readonly string[] PageIds = ["equipment", "scan", "auto", "forge", "demand", "settings"];
     private static readonly string[] PageTitles =
-        ["装备强化", "装备扫描", "自动强化", "星之铁匠铺", "需求分析", "软件设置"];
+        ["装备", "扫描", "自动", "铁匠铺", "需求", "设置"];
 
     private bool CanUseWebPage
         => _webUiReady && !_webUiFailed && !_webUiSkipped && _webView?.CoreWebView2 != null;
@@ -136,16 +136,17 @@ public partial class MainForm
             Height = 1,
             BackColor = Color.FromArgb(232, 223, 210),
         };
-        var x = ScalePixel(12);
+        var x = ScalePixel(8);
         for (var i = 0; i < PageTitles.Length; i++)
         {
             var index = i;
+            var title = PageTitles[i];
             var button = new Label
             {
-                Text = PageTitles[i],
+                Text = title,
                 AutoSize = false,
                 Location = new Point(x, 0),
-                Size = new Size(ScalePixel(88), ScalePixel(43)),
+                Size = new Size(ScalePixel(title.Length <= 2 ? 64 : 80), ScalePixel(43)),
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
@@ -158,7 +159,7 @@ public partial class MainForm
             };
             _tabButtons.Add(button);
             bar.Controls.Add(button);
-            x += button.Width + ScalePixel(4);
+            x += button.Width + ScalePixel(6);
         }
 
         bar.Paint += (_, e) =>
@@ -246,6 +247,7 @@ public partial class MainForm
         var index = _mainTabs.SelectedIndex;
         var useWeb = CanUseWebPage && IsWebContentPage(index);
         RefreshTabBar();
+        LayoutTopToolbar();
 
         if (useWeb)
         {
@@ -360,6 +362,15 @@ public partial class MainForm
                     break;
                 case "bindHotKey":
                     ToggleBindRecognitionHotKey();
+                    break;
+                case "toggleScreenshot":
+                    ToggleScreenshotPreview();
+                    break;
+                case "openFolder":
+                    btnOpenFolder_Click(this, EventArgs.Empty);
+                    break;
+                case "openAutoSettings":
+                    ShowAutoEnhanceSettingsWindow();
                     break;
             }
         }
@@ -513,7 +524,8 @@ public partial class MainForm
                 [],
                 "套装需求",
                 "识别装备后显示适用子类",
-                []);
+                [],
+                _screenshotWanted);
         }
 
         var info = _lastInfo;
@@ -579,7 +591,8 @@ public partial class MainForm
                     string.IsNullOrWhiteSpace(hero.Code)
                         ? null
                         : $"https://{WebHostName}/HeroData/heroes/{hero.Code}.png")).ToList()))
-                .ToList());
+                .ToList(),
+            _screenshotWanted);
     }
 
     private void PostWebMessage(object payload)
@@ -651,7 +664,8 @@ public partial class MainForm
         List<WebSubStatDto> SubStats,
         string RecsTitle,
         string RecsEmpty,
-        List<WebRecommendationDto> Recommendations);
+        List<WebRecommendationDto> Recommendations,
+        bool ScreenshotWanted);
 
     private sealed record WebSubStatDto(string Name, string Value);
 

@@ -28,7 +28,6 @@ public partial class MainForm : Form
     private Modules.Ocr.OcrEngine? _ocrEngine;
     private Keys _registeredRecognitionHotKey = Keys.None;
     private string _recognitionHotKeyText = HotKeyBinding.Default.ToDisplayString();
-    private AntdUI.Button _btnBindHotKey = null!;
     private bool _isBindingHotKey;
     private HotKeyBindFilter? _hotKeyBindFilter;
     private bool _isRecognizing;
@@ -566,24 +565,6 @@ public partial class MainForm : Form
         _registeredRecognitionHotKey = Keys.None;
     }
 
-    private void CreateBindHotKeyButton()
-    {
-        _btnBindHotKey = new AntdUI.Button
-        {
-            Text = _recognitionHotKeyText,
-            Anchor = AnchorStyles.Top | AnchorStyles.Left,
-            Size = new Size(ScalePixel(92), ScalePixel(34)),
-            Radius = 6,
-            BorderWidth = 1,
-            DefaultBack = Color.White,
-            DefaultBorderColor = Color.FromArgb(218, 220, 224),
-        };
-        _btnBindHotKey.Click += (_, _) => ToggleBindRecognitionHotKey();
-        toolTip.SetToolTip(_btnBindHotKey, "点击后按下空格、回车或 F1–F12，Esc 取消");
-        topPanel.Controls.Add(_btnBindHotKey);
-        RefreshBindHotKeyButton();
-    }
-
     private void ToggleBindRecognitionHotKey()
     {
         if (_isBindingHotKey)
@@ -668,14 +649,8 @@ public partial class MainForm : Form
 
     private void RefreshBindHotKeyButton()
     {
-        if (_btnBindHotKey == null)
+        if (btnCaptureRecognize == null)
             return;
-        _btnBindHotKey.Text = _isBindingHotKey ? "按下按键…" : _recognitionHotKeyText;
-        toolTip.SetToolTip(
-            _btnBindHotKey,
-            _isBindingHotKey
-                ? "正在绑定：按下空格、回车或 F1–F12，Esc 取消"
-                : $"当前识别快捷键 {_recognitionHotKeyText}。点击后按下新按键即可绑定");
         toolTip.SetToolTip(btnCaptureRecognize, $"截图并识别当前游戏画面（{_recognitionHotKeyText}）");
     }
 
@@ -742,12 +717,21 @@ public partial class MainForm : Form
         }
     }
 
-    /// <summary>展开/收起底部截图预览面板。</summary>
+    /// <summary>展开/收起截图预览面板。</summary>
     private void btnToggleScreenshot_Click(object sender, EventArgs e)
+        => ToggleScreenshotPreview();
+
+    private void ToggleScreenshotPreview()
     {
         _screenshotWanted = !_screenshotWanted;
+        ApplyScreenshotPreview();
+    }
+
+    private void ApplyScreenshotPreview()
+    {
         btnToggleShot.Text = _screenshotWanted ? "收起截图" : "查看截图";
         pnlScreenshot.Visible = IsEquipmentTabActive && _screenshotWanted;
+        PushWebEquipment();
     }
 
     private void ShowEquipmentInfo(Modules.Ocr.EquipmentInfo info)

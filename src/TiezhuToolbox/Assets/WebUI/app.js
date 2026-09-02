@@ -30,6 +30,9 @@ function adviceClass(advice) {
 }
 
 function renderEquipment(data) {
+  const shot = $("eq-toggle-shot");
+  if (shot)
+    shot.textContent = data?.screenshotWanted ? "收起截图" : "查看截图";
   if (!data || !data.hasResult) {
     $("eq-score").textContent = "—";
     $("eq-meta").textContent = "点击顶部「截图识别」，或使用识别快捷键";
@@ -224,7 +227,9 @@ function escapeHtml(value) {
     node.addEventListener("input", emitSettings);
 });
 $("st-hotkey").addEventListener("click", () => post({ type: "bindHotKey" }));
+$("eq-toggle-shot").addEventListener("click", () => post({ type: "toggleScreenshot" }));
 $("st-open-auto").addEventListener("click", () => post({ type: "openAutoSettings" }));
+$("st-open-folder").addEventListener("click", () => post({ type: "openFolder" }));
 $("st-reset").addEventListener("click", () => post({ type: "resetSettings" }));
 
 window.chrome?.webview?.addEventListener("message", (event) => {

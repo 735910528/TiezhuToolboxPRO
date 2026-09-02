@@ -93,6 +93,13 @@ button, input, select { font: inherit; }
 }
 
 .card-head h2, .settings-card h2, .settings-card h3 { margin: 0 0 6px; }
+.recs-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.recs-head .btn { flex: 0 0 auto; }
 .settings-card h3 { margin-top: 22px; }
 .muted, .hint { color: var(--muted); margin: 0 0 12px; font-size: 13px; }
 .stack { display: flex; flex-direction: column; gap: 10px; }

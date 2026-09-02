@@ -39,12 +39,12 @@ public partial class MainForm
             Gap = 28,
             Padding = new Padding(0),
         };
-        _equipmentTab = new AntdUI.TabPage { Text = "装备强化", BackColor = Color.White };
-        _gearScanTab = new AntdUI.TabPage { Text = "装备扫描", BackColor = Color.FromArgb(245, 246, 248) };
-        _autoEnhanceTab = new AntdUI.TabPage { Text = "自动强化", BackColor = Color.FromArgb(245, 246, 248) };
-        _starForgeTab = new AntdUI.TabPage { Text = "星之铁匠铺", BackColor = Color.FromArgb(245, 246, 248) };
-        _demandTab = new AntdUI.TabPage { Text = "需求分析", BackColor = Color.White };
-        _settingsTab = new AntdUI.TabPage { Text = "软件设置", BackColor = Color.FromArgb(245, 246, 248) };
+        _equipmentTab = new AntdUI.TabPage { Text = "装备", BackColor = Color.White };
+        _gearScanTab = new AntdUI.TabPage { Text = "扫描", BackColor = Color.FromArgb(245, 246, 248) };
+        _autoEnhanceTab = new AntdUI.TabPage { Text = "自动", BackColor = Color.FromArgb(245, 246, 248) };
+        _starForgeTab = new AntdUI.TabPage { Text = "铁匠铺", BackColor = Color.FromArgb(245, 246, 248) };
+        _demandTab = new AntdUI.TabPage { Text = "需求", BackColor = Color.White };
+        _settingsTab = new AntdUI.TabPage { Text = "设置", BackColor = Color.FromArgb(245, 246, 248) };
 
         foreach (var control in new Control[]
                  {
@@ -53,7 +53,6 @@ public partial class MainForm
                      btnOpenFolder, btnToggleShot, btnCaptureRecognize,
                  })
             control.Anchor = AnchorStyles.Top | AnchorStyles.Left;
-        CreateBindHotKeyButton();
         // Select.List 是 AntdUI 提供的不可编辑选择模式：禁止文字输入，但仍可展开下拉。
         comboConnectionMode.ReadOnly = false;
         comboConnectionMode.List = true;
@@ -133,9 +132,9 @@ public partial class MainForm
         var showPcParams = showDetails && IsWindowConnectionMode;
 
         btnCaptureRecognize.Visible = showEquipmentActions;
-        _btnBindHotKey.Visible = showEquipmentActions;
-        btnToggleShot.Visible = showEquipmentActions;
-        btnOpenFolder.Visible = showEquipmentActions;
+        // Web 装备页自带查看截图；无 WebView2 时才在顶栏露出，避免功能丢失。
+        btnToggleShot.Visible = showEquipmentActions && !CanUseWebPage;
+        btnOpenFolder.Visible = false;
         btnConnectionStep.Visible = true;
         comboDevices.Visible = showDetails;
         txtAddress.Visible = showDetails;
@@ -155,9 +154,8 @@ public partial class MainForm
         if (showEquipmentActions)
         {
             PlaceFromRight(btnCaptureRecognize, ScalePixel(112), ref right, gap);
-            PlaceFromRight(_btnBindHotKey, ScalePixel(100), ref right, gap);
-            PlaceFromRight(btnToggleShot, ScalePixel(92), ref right, gap);
-            PlaceFromRight(btnOpenFolder, ScalePixel(76), ref right, gap);
+            if (btnToggleShot.Visible)
+                PlaceFromRight(btnToggleShot, ScalePixel(92), ref right, gap);
         }
 
         if (showDetails)
@@ -232,7 +230,7 @@ public partial class MainForm
         foreach (var label in new[] { lblThresholdGroup, lblThLeft, lblThRight, lblTh88 })
             ConfigureSettingsRowLabel(label);
 
-        var recognitionTitle = CreateSettingsHeading("识别控制", "全局快捷键和持续识别只在“装备强化”页生效。", 188);
+        var recognitionTitle = CreateSettingsHeading("识别控制", "全局快捷键和持续识别只在“装备”页生效。", 188);
         recognitionSettingsPanel.Dock = DockStyle.None;
         recognitionSettingsPanel.Location = new Point(24, 258);
         recognitionSettingsPanel.Size = new Size(620, 34);
@@ -261,6 +259,17 @@ public partial class MainForm
             DefaultBorderColor = Color.FromArgb(218, 220, 224),
         };
         openAutoSettings.Click += (_, _) => ShowAutoEnhanceSettingsWindow();
+        var openFolder = new AntdUI.Button
+        {
+            Text = "打开截图目录",
+            Location = new Point(196, 384),
+            Size = new Size(140, 34),
+            Radius = 6,
+            BorderWidth = 1,
+            DefaultBack = Color.White,
+            DefaultBorderColor = Color.FromArgb(218, 220, 224),
+        };
+        openFolder.Click += (_, _) => btnOpenFolder_Click(this, EventArgs.Empty);
 
         var rulesTitle = CreateSettingsHeading(
             "自动规则说明",
@@ -295,6 +304,7 @@ public partial class MainForm
         card.Controls.Add(reset);
         card.Controls.Add(rulesPanel);
         card.Controls.Add(rulesTitle);
+        card.Controls.Add(openFolder);
         card.Controls.Add(openAutoSettings);
         card.Controls.Add(automationTitle);
         card.Controls.Add(recognitionSettingsPanel);
