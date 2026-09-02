@@ -37,8 +37,6 @@ public partial class MainForm : Form
     // AntdUI.Select 不支持 DataSource 绑定，目标列表单独保存，SelectedIndex 对应下标。
     private List<AdbDeviceInfo> _devices = new();
     private List<GameWindowInfo> _windows = new();
-    /// <summary>是否已展开顶部连接抽屉。</summary>
-    private bool _connectionDrawerOpen;
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -312,7 +310,6 @@ public partial class MainForm : Form
                 ? "第七史诗"
                 : txtAddress.Text.Trim();
 
-        // 选择 PC / 模拟器后只更新抽屉内容，不把参数摊回顶栏。
         ApplyConnectionModeUi();
         SaveSettingsFromControls();
         RefreshTargetList();
@@ -324,7 +321,7 @@ public partial class MainForm : Form
             return;
 
         SaveSettingsFromControls();
-        RefreshConnectionSummary();
+        LayoutConnectionPage();
         if (IsWindowConnectionMode)
         {
             UpdateStatus(IsWindowBackgroundMode
@@ -335,19 +332,8 @@ public partial class MainForm : Form
 
     private void btnConnectionStep_Click(object sender, EventArgs e)
     {
-        _connectionDrawerOpen = !_connectionDrawerOpen;
-        if (_connectionDrawerOpen)
-        {
-            ApplyConnectionModeUi();
-            RefreshTargetList();
-            UpdateStatus(IsWindowConnectionMode
-                ? $"已展开 PC 连接设置（{(IsWindowBackgroundMode ? "后台不抢键鼠" : "前台会抢键鼠")}）"
-                : "已展开模拟器连接设置");
-            return;
-        }
-
-        LayoutTopToolbar();
-        UpdateStatus("已收起连接设置");
+        if (_connectionTab != null)
+            _mainTabs.SelectedTab = _connectionTab;
     }
 
     private void ApplyConnectionModeUi()
@@ -364,6 +350,8 @@ public partial class MainForm : Form
             toolTip.SetToolTip(btnConnect, "选用窗口并自动设置分辨率");
             toolTip.SetToolTip(comboWindowInputMode, "前台：SendInput，兼容最好但会抢鼠标；后台：窗口消息，不抢键鼠");
             btnConnect.Text = "选用";
+            if (_lblConnectionAddress != null)
+                _lblConnectionAddress.Text = "窗口标题";
         }
         else
         {
@@ -374,8 +362,11 @@ public partial class MainForm : Form
             toolTip.SetToolTip(comboDevices, "已连接的 ADB 设备");
             toolTip.SetToolTip(btnConnect, "adb connect 到输入的地址");
             btnConnect.Text = "连接";
+            if (_lblConnectionAddress != null)
+                _lblConnectionAddress.Text = "ADB 地址";
         }
 
+        LayoutConnectionPage();
         LayoutTopToolbar();
     }
 

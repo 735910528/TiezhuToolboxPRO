@@ -973,7 +973,7 @@ if (args.Contains("--ui-smoke"))
                 ?? throw new InvalidOperationException("未找到主页签");
             var tabs = tabsField.GetValue(form) ?? throw new InvalidOperationException("主页签未初始化");
             var pages = tabs.GetType().GetProperty("Pages")?.GetValue(tabs) as System.Collections.ICollection;
-            if (pages?.Count != 6)
+            if (pages?.Count != 7)
                 throw new InvalidOperationException($"页签数量错误：{pages?.Count}");
 
             var selectedIndex = tabs.GetType().GetProperty("SelectedIndex")!;
@@ -992,6 +992,11 @@ if (args.Contains("--ui-smoke"))
             var modeItems = modeSelect.GetType().GetProperty("Items")!.GetValue(modeSelect) as System.Collections.ICollection;
             if (modeItems == null || modeItems.Count < 2)
                 throw new InvalidOperationException("连接方式下拉未包含 ADB/窗口 选项");
+            selectedIndex.SetValue(tabs, 6);
+            Application.DoEvents();
+            CaptureTab("connection");
+            if (!((Control)modeSelect).Visible)
+                throw new InvalidOperationException("连接页未显示连接方式");
             var deviceSelect = typeof(TiezhuToolbox.MainForm).GetField("comboDevices",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             var deviceReadOnly = (bool)deviceSelect.GetType().GetProperty("ReadOnly")!.GetValue(deviceSelect)!;
@@ -1000,14 +1005,6 @@ if (args.Contains("--ui-smoke"))
             var deviceListMode = (bool)deviceSelect.GetType().GetProperty("List")!.GetValue(deviceSelect)!;
             if (!deviceListMode)
                 throw new InvalidOperationException("设备下拉框仍允许文字输入");
-            typeof(TiezhuToolbox.MainForm).GetMethod("btnConnectionStep_Click",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-                .Invoke(form, new object[] { form, EventArgs.Empty });
-            Application.DoEvents();
-            var connectionDrawer = (Control)typeof(TiezhuToolbox.MainForm).GetField("_connectionDrawer",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            if (!connectionDrawer.Visible)
-                throw new InvalidOperationException("连接抽屉未能展开");
             // 连接方式下拉若仍展开，会挡住目标下拉的 ExpandDrop。
             var modeExpand = modeSelect.GetType().GetProperty("ExpandDrop")!;
             modeExpand.SetValue(modeSelect, false);
@@ -1045,13 +1042,15 @@ if (args.Contains("--ui-smoke"))
             }
             var addressInput = (Control)typeof(TiezhuToolbox.MainForm).GetField("txtAddress",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            typeof(TiezhuToolbox.MainForm).GetMethod("LayoutTopToolbar",
+            typeof(TiezhuToolbox.MainForm).GetMethod("LayoutConnectionPage",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .Invoke(form, null);
             Application.DoEvents();
             if (addressInput.Width < 180)
                 throw new InvalidOperationException(
                     $"ADB 地址输入框宽度不足：{addressInput.Width}（DPI={form.DeviceDpi}）");
+            selectedIndex.SetValue(tabs, 0);
+            Application.DoEvents();
             var showDemand = typeof(TiezhuToolbox.MainForm).GetMethod("ShowDemandRecommendations",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 ?? throw new InvalidOperationException("找不到套装需求展示方法");
@@ -1135,16 +1134,12 @@ if (args.Contains("--ui-smoke"))
             CaptureTab("auto-enhance");
             var topPanel = (Control)typeof(TiezhuToolbox.MainForm).GetField("topPanel",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            if (!ReferenceEquals(topPanel.Parent, form) || !topPanel.Visible)
-                throw new InvalidOperationException("连接工具栏未固定在窗体顶部");
-            var btnRefresh = (Control)typeof(TiezhuToolbox.MainForm).GetField("btnRefresh",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            if (!ReferenceEquals(topPanel.Parent, form))
+                throw new InvalidOperationException("装备工具栏未挂在主窗体");
             var btnCaptureRecognize = (Control)typeof(TiezhuToolbox.MainForm).GetField("btnCaptureRecognize",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            var btnConnectionStep = (Control)typeof(TiezhuToolbox.MainForm).GetField("btnConnectionStep",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            if (!btnConnectionStep.Visible || btnCaptureRecognize.Visible)
-                throw new InvalidOperationException("非装备页应显示连接入口并隐藏截图识别按钮");
+            if (topPanel.Visible || btnCaptureRecognize.Visible)
+                throw new InvalidOperationException("非装备页不应显示顶部截图栏");
             var autoStart = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoStart",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             var autoOpenLog = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoOpenLog",
@@ -1370,7 +1365,7 @@ if (args.Contains("--ui-smoke"))
         throw new TimeoutException("界面冒烟测试超时");
     if (uiError != null)
         throw new InvalidOperationException("界面冒烟测试失败", uiError);
-    Console.WriteLine("界面冒烟测试通过：6 个页签，23 个套装需求");
+    Console.WriteLine("界面冒烟测试通过：7 个页签，23 个套装需求");
     return;
 }
 

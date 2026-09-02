@@ -7,8 +7,8 @@
 ## 技术栈
 
 - **.NET 9 / C#（net9.0-windows10.0.19041.0）+ WinForms**：主程序，单文件自包含发布（win-x64）
-- **WebView2 + 本地 WebUI**：装备强化、需求分析、软件设置用 `Assets/WebUI` 页面；连接工具栏、截图预览、自动强化表格/判定图、星之铁匠铺日志和各类弹窗仍用 WinForms。缺少 WebView2 运行时时自动回退原生页。
-- **AntdUI 2.4.3**：顶部连接栏与自动强化/铁匠铺控件；注意其事件签名为自定义委托（IntEventHandler/BoolEventHandler/DecimalEventHandler），Button.Type 用 TTypeMini 枚举
+- **WebView2 + 本地 WebUI**：装备强化、需求分析、软件设置用 `Assets/WebUI` 页面；连接页、截图预览、自动强化表格/判定图、星之铁匠铺日志和各类弹窗仍用 WinForms。缺少 WebView2 运行时时自动回退原生页。
+- **AntdUI 2.4.3**：连接页与自动强化/铁匠铺控件；注意其事件签名为自定义委托（IntEventHandler/BoolEventHandler/DecimalEventHandler），Button.Type 用 TTypeMini 枚举
 - **OpenCvSharp4**：图像处理（裁剪、掩码、连通域、模板匹配）
 - **Microsoft.ML.OnnxRuntime + PaddleOCR PP-OCRv4 ONNX**：文本检测（det）+ 单行识别（rec），唯一的 OCR 引擎
 - **ADB（外部进程）**：截图，不依赖任何 adb 托管库
@@ -76,7 +76,7 @@ cd tools/OcrTest && dotnet run -- --demand-data          # 23套装/171子类/64
 cd tools/OcrTest && dotnet run -- --synthetic            # 权重匹配、右三满值、固定主属性和强化建议自检
 cd tools/OcrTest && dotnet run -- --gear-scan            # 合成 PCAPNG、TCP/XOR、LZ4/MessagePack 与 gear.txt 转换
 cd tools/OcrTest && dotnet run -- --gear-scan-local <capture.pcapng> [gear.txt] # 保留抓包本地回放，可选与基准核心字段比对
-cd tools/OcrTest && dotnet run -- --ui-smoke             # 六页签、需求浏览器、离开装备页暂停持续识别
+cd tools/OcrTest && dotnet run -- --ui-smoke             # 七页签、需求浏览器、离开装备页暂停持续识别
 cd tools/OcrTest && dotnet run -- --config-smoke         # 软件设置持久化/恢复默认
 dotnet publish src/TiezhuToolbox -c Release              # 单文件自包含发布
 ```

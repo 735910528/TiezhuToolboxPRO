@@ -13,8 +13,15 @@ public partial class MainForm
     private DemandBrowserControl _demandBrowserControl = null!;
     private bool _isLoadingSettings;
     private Label _settingsRulesLabel = null!;
-    private Panel _connectionDrawer = null!;
-    private Label _lblConnectionSummary = null!;
+    private AntdUI.TabPage _connectionTab = null!;
+    private Control _connectionContent = null!;
+    private Panel _connectionCard = null!;
+    private Panel _connectionPcRow = null!;
+    private Label _lblConnectionMode = null!;
+    private Label _lblConnectionTarget = null!;
+    private Label _lblConnectionAddress = null!;
+    private Label _lblConnectionResolution = null!;
+    private Label _lblConnectionInput = null!;
 
     private bool IsEquipmentTabActive => _mainTabs.SelectedTab == _equipmentTab;
 
@@ -75,12 +82,11 @@ public partial class MainForm
         comboWindowInputMode.Items.Add("前台");
         comboWindowInputMode.Items.Add("后台");
         comboWindowInputMode.SelectedIndexChanged += comboWindowInputMode_SelectedIndexChanged;
-        toolTip.SetToolTip(comboConnectionMode, "先选择 PC 或模拟器，再进入连接参数");
+        toolTip.SetToolTip(comboConnectionMode, "选择 PC 客户端或模拟器");
         toolTip.SetToolTip(comboWindowInputMode, "前台会抢鼠标；后台不抢键鼠，窗口可能短暂移动");
-        toolTip.SetToolTip(btnConnectionStep, "进入当前方式的连接参数；参数页可点「切换」返回");
+        toolTip.SetToolTip(btnConnectionStep, "打开连接页");
         toolTip.SetToolTip(comboWindowResolution, "目标游戏画面分辨率，选用窗口时会自动设置");
         toolTip.SetToolTip(btnSetResolution, "手动将当前窗口调整到目标分辨率");
-        CreateConnectionDrawer();
         topPanel.Resize += (_, _) => LayoutTopToolbar();
 
         _disabledDemandProfiles.UnionWith(_settings.DisabledDemandProfiles);
@@ -107,12 +113,18 @@ public partial class MainForm
         _settingsTab.Controls.Add(settingsContent);
         ScaleRuntimePage(settingsContent);
 
+        _connectionTab = new AntdUI.TabPage { Text = "连接", BackColor = Color.FromArgb(245, 246, 248) };
+        _connectionContent = CreateConnectionContent();
+        _connectionTab.Controls.Add(_connectionContent);
+        ScaleRuntimePage(_connectionContent);
+
         _mainTabs.Pages.Add(_equipmentTab);
         _mainTabs.Pages.Add(_gearScanTab);
         _mainTabs.Pages.Add(_autoEnhanceTab);
         _mainTabs.Pages.Add(_starForgeTab);
         _mainTabs.Pages.Add(_demandTab);
         _mainTabs.Pages.Add(_settingsTab);
+        _mainTabs.Pages.Add(_connectionTab);
         _mainTabs.SelectedIndex = 0;
         _mainTabs.SelectedIndexChanged += MainTabs_SelectedIndexChanged;
 
@@ -126,46 +138,11 @@ public partial class MainForm
         ApplyHybridPageLayout();
     }
 
-    private void CreateConnectionDrawer()
-    {
-        _connectionDrawer = new Panel
-        {
-            BackColor = Color.FromArgb(247, 244, 238),
-            Visible = false,
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-        };
-        foreach (var control in new Control[]
-                 {
-                     comboConnectionMode, comboDevices, txtAddress, btnConnect,
-                     comboWindowResolution, comboWindowInputMode, btnSetResolution, btnRefresh,
-                 })
-        {
-            topPanel.Controls.Remove(control);
-            _connectionDrawer.Controls.Add(control);
-        }
-
-        _lblConnectionSummary = new Label
-        {
-            AutoSize = false,
-            ForeColor = Color.FromArgb(120, 113, 108),
-            Font = new Font("Microsoft YaHei UI", 9.5F),
-            TextAlign = ContentAlignment.MiddleLeft,
-            AutoEllipsis = true,
-        };
-        topPanel.Controls.Add(_connectionDrawer);
-        topPanel.Controls.Add(_lblConnectionSummary);
-        topBorder.Dock = DockStyle.None;
-        topBorder.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-        topBorder.Height = 1;
-        toolTip.SetToolTip(btnConnectionStep, "展开或收起连接设置");
-        btnConnectionStep.Text = "连接";
-    }
-
     private bool _isLayingOutToolbar;
 
     private void LayoutTopToolbar()
     {
-        if (_isLayingOutToolbar || _connectionDrawer == null)
+        if (_isLayingOutToolbar)
             return;
         _isLayingOutToolbar = true;
         try
@@ -182,98 +159,159 @@ public partial class MainForm
     {
         var margin = ScalePixel(12);
         var gap = ScalePixel(8);
-        var headerHeight = ScalePixel(64);
-        var drawerHeight = ScalePixel(108);
         var showEquipmentActions = IsEquipmentTabActive;
-        var showPcParams = IsWindowConnectionMode;
 
+        topPanel.Visible = showEquipmentActions;
+        topPanel.Height = ScalePixel(64);
         btnCaptureRecognize.Visible = showEquipmentActions;
         btnToggleShot.Visible = showEquipmentActions && !CanUseWebPage;
         btnOpenFolder.Visible = false;
-        btnConnectionStep.Visible = true;
-        btnConnectionStep.Text = _connectionDrawerOpen ? "收起" : "连接";
-        toolTip.SetToolTip(
-            btnConnectionStep,
-            _connectionDrawerOpen ? "收起连接设置" : "展开连接设置（PC / 模拟器、窗口或设备）");
+        btnConnectionStep.Visible = false;
 
-        comboConnectionMode.Visible = true;
-        comboDevices.Visible = true;
-        txtAddress.Visible = true;
-        btnConnect.Visible = true;
-        btnRefresh.Visible = true;
-        comboWindowResolution.Visible = showPcParams;
-        comboWindowInputMode.Visible = showPcParams;
-        btnSetResolution.Visible = false;
-
-        topPanel.Height = headerHeight + (_connectionDrawerOpen ? drawerHeight : 0);
-        topBorder.Location = new Point(0, headerHeight - 1);
-        topBorder.Width = topPanel.ClientSize.Width;
-        _connectionDrawer.Visible = _connectionDrawerOpen;
-        _connectionDrawer.Location = new Point(0, headerHeight);
-        _connectionDrawer.Size = new Size(topPanel.ClientSize.Width, drawerHeight);
+        if (!showEquipmentActions)
+            return;
 
         var right = topPanel.ClientSize.Width - margin;
-        if (showEquipmentActions)
-        {
-            PlaceFromRight(btnCaptureRecognize, ScalePixel(112), ScalePixel(15), ref right, gap);
-            if (btnToggleShot.Visible)
-                PlaceFromRight(btnToggleShot, ScalePixel(92), ScalePixel(15), ref right, gap);
-        }
-
-        btnConnectionStep.Location = new Point(margin, ScalePixel(15));
-        btnConnectionStep.Size = new Size(ScalePixel(76), ScalePixel(34));
-        var summaryLeft = btnConnectionStep.Right + gap;
-        _lblConnectionSummary.Location = new Point(summaryLeft, ScalePixel(15));
-        _lblConnectionSummary.Size = new Size(Math.Max(ScalePixel(80), right - summaryLeft - gap), ScalePixel(34));
-        RefreshConnectionSummary();
-
-        LayoutConnectionDrawer(showPcParams);
-        // 冒烟测试在抽屉未展开时也会检查地址框宽度。
-        if (txtAddress.Width < ScalePixel(180))
-            txtAddress.Size = new Size(ScalePixel(180), ScalePixel(34));
+        PlaceFromRight(btnCaptureRecognize, ScalePixel(112), ScalePixel(15), ref right, gap);
+        if (btnToggleShot.Visible)
+            PlaceFromRight(btnToggleShot, ScalePixel(92), ScalePixel(15), ref right, gap);
     }
 
-    private void LayoutConnectionDrawer(bool showPcParams)
+    private Control CreateConnectionContent()
     {
-        var pad = ScalePixel(12);
-        var gap = ScalePixel(8);
-        var y1 = ScalePixel(10);
-        var y2 = ScalePixel(54);
-        var drawerRight = _connectionDrawer.ClientSize.Width - pad;
-        if (drawerRight < pad)
-            drawerRight = ScalePixel(900);
-
-        comboConnectionMode.Location = new Point(pad, y1);
-        comboConnectionMode.Size = new Size(ScalePixel(100), ScalePixel(34));
-        PlaceFromRight(btnRefresh, ScalePixel(76), y1, ref drawerRight, gap);
-        PlaceFromRight(btnConnect, ScalePixel(76), y1, ref drawerRight, gap);
-        comboDevices.Location = new Point(comboConnectionMode.Right + gap, y1);
-        comboDevices.Size = new Size(Math.Max(ScalePixel(120), drawerRight - comboDevices.Left), ScalePixel(34));
-
-        var row2Right = _connectionDrawer.ClientSize.Width - pad;
-        if (row2Right < pad)
-            row2Right = ScalePixel(900);
-        txtAddress.Location = new Point(pad, y2);
-        if (showPcParams)
+        var host = new Panel
         {
-            PlaceFromRight(comboWindowInputMode, ScalePixel(76), y2, ref row2Right, gap);
-            PlaceFromRight(comboWindowResolution, ScalePixel(118), y2, ref row2Right, gap);
-            txtAddress.Size = new Size(Math.Max(ScalePixel(180), row2Right - pad), ScalePixel(34));
-        }
-        else
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            Padding = new Padding(24),
+            BackColor = Color.FromArgb(245, 246, 248),
+        };
+        _connectionCard = new Panel
         {
-            txtAddress.Size = new Size(Math.Max(ScalePixel(180), row2Right - pad), ScalePixel(34));
+            BackColor = Color.White,
+            Location = new Point(24, 24),
+            Size = new Size(720, 400),
+        };
+        host.Resize += (_, _) =>
+        {
+            _connectionCard.Width = Math.Min(
+                ScalePixel(760),
+                Math.Max(ScalePixel(560), host.ClientSize.Width - ScalePixel(48)));
+            LayoutConnectionPage();
+        };
+
+        var title = new Label
+        {
+            Text = "连接",
+            Font = new Font("Microsoft YaHei UI", 17F, FontStyle.Bold),
+            Location = new Point(24, 18),
+            Size = new Size(650, 40),
+        };
+        var hint = new Label
+        {
+            Text = "选择 PC 或模拟器后刷新并选用目标。后台模式不抢键鼠，适合把游戏放在一边。",
+            ForeColor = Color.FromArgb(120, 113, 108),
+            Location = new Point(24, 62),
+            Size = new Size(650, 36),
+        };
+
+        foreach (var control in new Control[]
+                 {
+                     comboConnectionMode, comboDevices, txtAddress, btnConnect,
+                     comboWindowResolution, comboWindowInputMode, btnSetResolution, btnRefresh,
+                 })
+        {
+            topPanel.Controls.Remove(control);
+            _connectionCard.Controls.Add(control);
         }
+
+        _lblConnectionMode = CreateConnectionLabel("方式", 24, 118);
+        _lblConnectionTarget = CreateConnectionLabel("目标", 24, 168);
+        _lblConnectionAddress = CreateConnectionLabel("窗口标题", 24, 218);
+
+        _connectionPcRow = new Panel
+        {
+            Location = new Point(24, 268),
+            Size = new Size(670, 34),
+        };
+        _lblConnectionResolution = CreateConnectionLabel("分辨率", 0, 0);
+        _lblConnectionInput = CreateConnectionLabel("输入", 320, 0);
+        _connectionPcRow.Controls.Add(_lblConnectionResolution);
+        _connectionPcRow.Controls.Add(_lblConnectionInput);
+        _connectionCard.Controls.Remove(comboWindowResolution);
+        _connectionCard.Controls.Remove(comboWindowInputMode);
+        _connectionPcRow.Controls.Add(comboWindowResolution);
+        _connectionPcRow.Controls.Add(comboWindowInputMode);
+
+        _connectionCard.Controls.Add(title);
+        _connectionCard.Controls.Add(hint);
+        _connectionCard.Controls.Add(_lblConnectionMode);
+        _connectionCard.Controls.Add(_lblConnectionTarget);
+        _connectionCard.Controls.Add(_lblConnectionAddress);
+        _connectionCard.Controls.Add(_connectionPcRow);
+        host.Controls.Add(_connectionCard);
+        LayoutConnectionPage();
+        return host;
     }
 
-    private void RefreshConnectionSummary()
+    private static Label CreateConnectionLabel(string text, int x, int y)
+        => new()
+        {
+            Text = text,
+            Location = new Point(x, y),
+            Size = new Size(88, 34),
+            TextAlign = ContentAlignment.MiddleLeft,
+            ForeColor = Color.FromArgb(32, 33, 36),
+        };
+
+    private void LayoutConnectionPage()
     {
-        if (_lblConnectionSummary == null)
+        if (_connectionCard == null)
             return;
-        _lblConnectionSummary.Text = IsWindowConnectionMode
-            ? $"PC · {(IsWindowBackgroundMode ? "后台" : "前台")}"
-            : "模拟器";
-        toolTip.SetToolTip(_lblConnectionSummary, "当前连接方式，点左侧「连接」可修改参数");
+
+        var pad = ScalePixel(24);
+        var gap = ScalePixel(8);
+        var labelWidth = ScalePixel(88);
+        var controlX = pad + labelWidth + ScalePixel(12);
+        var rowRight = _connectionCard.Width - pad;
+        if (rowRight < controlX + ScalePixel(180))
+            rowRight = controlX + ScalePixel(400);
+
+        PlaceConnectionLabel(_lblConnectionMode, pad, ScalePixel(118), labelWidth);
+        comboConnectionMode.Location = new Point(controlX, ScalePixel(118));
+        comboConnectionMode.Size = new Size(ScalePixel(120), ScalePixel(34));
+
+        PlaceConnectionLabel(_lblConnectionTarget, pad, ScalePixel(168), labelWidth);
+        PlaceFromRight(btnRefresh, ScalePixel(76), ScalePixel(168), ref rowRight, gap);
+        PlaceFromRight(btnConnect, ScalePixel(76), ScalePixel(168), ref rowRight, gap);
+        comboDevices.Location = new Point(controlX, ScalePixel(168));
+        comboDevices.Size = new Size(Math.Max(ScalePixel(180), rowRight - controlX), ScalePixel(34));
+
+        PlaceConnectionLabel(_lblConnectionAddress, pad, ScalePixel(218), labelWidth);
+        txtAddress.Location = new Point(controlX, ScalePixel(218));
+        txtAddress.Size = new Size(Math.Max(ScalePixel(180), _connectionCard.Width - controlX - pad), ScalePixel(34));
+
+        _connectionPcRow.Location = new Point(pad, ScalePixel(268));
+        _connectionPcRow.Width = Math.Max(ScalePixel(400), _connectionCard.Width - pad * 2);
+        PlaceConnectionLabel(_lblConnectionResolution, 0, 0, labelWidth);
+        comboWindowResolution.Location = new Point(labelWidth + ScalePixel(12), 0);
+        comboWindowResolution.Size = new Size(ScalePixel(118), ScalePixel(34));
+        var inputX = comboWindowResolution.Right + ScalePixel(24);
+        PlaceConnectionLabel(_lblConnectionInput, inputX, 0, labelWidth);
+        comboWindowInputMode.Location = new Point(inputX + labelWidth + ScalePixel(12), 0);
+        comboWindowInputMode.Size = new Size(ScalePixel(76), ScalePixel(34));
+        btnSetResolution.Visible = false;
+        _connectionPcRow.Visible = IsWindowConnectionMode;
+        _connectionCard.Height = IsWindowConnectionMode ? ScalePixel(330) : ScalePixel(280);
+    }
+
+    private void PlaceConnectionLabel(Label label, int x, int y, int width)
+    {
+        if (label == null)
+            return;
+        label.Location = new Point(x, y);
+        label.Size = new Size(width, ScalePixel(34));
+        label.TextAlign = ContentAlignment.MiddleLeft;
     }
 
     private void PlaceFromRight(Control control, int width, int y, ref int right, int gap)
@@ -483,7 +521,6 @@ public partial class MainForm
                 comboWindowInputMode.SelectedIndex = 0;
             _screenshotWanted = _settings.LiveGamePreview;
 
-            _connectionDrawerOpen = false;
             ApplyConnectionModeUi();
             _comboGearScanMinimumEnhance.SelectedValue = $"+{_settings.GearScanMinimumEnhance}";
             _comboGearScanHeroFilter.SelectedValue = GetGearScanHeroFilterText(_settings.GearScanHeroFilterMode);

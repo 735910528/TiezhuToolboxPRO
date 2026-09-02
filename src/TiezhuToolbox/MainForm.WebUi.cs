@@ -43,9 +43,9 @@ public partial class MainForm
     private bool _webUiFailed;
     private bool _webUiSkipped;
 
-    private static readonly string[] PageIds = ["equipment", "scan", "auto", "forge", "demand", "settings"];
+    private static readonly string[] PageIds = ["equipment", "scan", "auto", "forge", "demand", "settings", "connect"];
     private static readonly string[] PageTitles =
-        ["装备", "扫描", "自动", "铁匠铺", "需求", "设置"];
+        ["装备", "扫描", "自动", "铁匠铺", "需求", "设置", "连接"];
 
     private bool CanUseWebPage
         => _webUiReady && !_webUiFailed && !_webUiSkipped && _webView?.CoreWebView2 != null;
@@ -146,7 +146,7 @@ public partial class MainForm
                 Text = title,
                 AutoSize = false,
                 Location = new Point(x, 0),
-                Size = new Size(ScalePixel(title.Length <= 2 ? 64 : 80), ScalePixel(43)),
+                Size = new Size(ScalePixel(title.Length <= 2 ? 56 : 72), ScalePixel(43)),
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
@@ -311,6 +311,7 @@ public partial class MainForm
         3 => _starForgeContent,
         4 => _demandBrowserControl,
         5 => _settingsScrollHost,
+        6 => _connectionContent,
         _ => _equipmentHost,
     };
 
@@ -324,6 +325,7 @@ public partial class MainForm
             _ when content == _starForgeContent => _starForgeTab,
             _ when content == _demandBrowserControl => _demandTab,
             _ when content == _settingsScrollHost => _settingsTab,
+            _ when content == _connectionContent => _connectionTab,
             _ => _equipmentTab,
         };
         if (content.Parent == tab)
