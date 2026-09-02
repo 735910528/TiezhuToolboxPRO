@@ -6,8 +6,9 @@
 
 ## 技术栈
 
-- **.NET 9 / C#（net9.0-windows）+ WinForms**：主程序，单文件自包含发布（win-x64）
-- **AntdUI 2.4.3**：现代化控件库，顶部工具栏（Select/Input/Button）与底部设置区（InputNumber/Select/Checkbox）全部使用 AntdUI 控件；注意其事件签名为自定义委托（IntEventHandler/BoolEventHandler/DecimalEventHandler），Button.Type 用 TTypeMini 枚举
+- **.NET 9 / C#（net9.0-windows10.0.19041.0）+ WinForms**：主程序，单文件自包含发布（win-x64）
+- **WebView2 + 本地 WebUI**：装备强化、需求分析、软件设置用 `Assets/WebUI` 页面；连接工具栏、截图预览、自动强化表格/判定图、星之铁匠铺日志和各类弹窗仍用 WinForms。缺少 WebView2 运行时时自动回退原生页。
+- **AntdUI 2.4.3**：顶部连接栏与自动强化/铁匠铺控件；注意其事件签名为自定义委托（IntEventHandler/BoolEventHandler/DecimalEventHandler），Button.Type 用 TTypeMini 枚举
 - **OpenCvSharp4**：图像处理（裁剪、掩码、连通域、模板匹配）
 - **Microsoft.ML.OnnxRuntime + PaddleOCR PP-OCRv4 ONNX**：文本检测（det）+ 单行识别（rec），唯一的 OCR 引擎
 - **ADB（外部进程）**：截图，不依赖任何 adb 托管库
@@ -18,8 +19,10 @@
 ```
 src/TiezhuToolbox/            主程序（WinForms）
 ├── Program.cs                入口
-├── MainForm.cs / .Designer.cs 主界面与装备强化逻辑；AntdUI 页签包含装备强化、自动强化、星之铁匠铺、需求分析、软件设置。
+├── MainForm.cs / .Designer.cs 主界面与装备强化逻辑。
 ├── MainForm.Tabs.cs          页签装配、设置持久化和页签间识别启停。
+├── MainForm.WebUi.cs         WebView2 混合壳、本地页面桥接；冒烟测试环境不初始化 WebView2。
+├── Assets/WebUI/             装备/需求/设置页的 HTML/CSS/JS（虚拟主机 https://app.tiezhu/）
 ├── DemandBrowserControl.cs   只读套装需求浏览器，展示子类权重和英雄完整配装组合。
 ├── AppPaths.cs / AppSettings.cs 用户目录、原子写入和版本化软件设置（LocalAppData/TiezhuToolbox）。
 ├── AdbHelper.cs              adb.exe 定位（程序目录→PATH→SDK 环境变量→Android Studio 默认路径）、

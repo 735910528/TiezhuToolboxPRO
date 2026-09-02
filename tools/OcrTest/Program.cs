@@ -442,7 +442,9 @@ if (args.Contains("--ui-smoke"))
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
             var btnCaptureRecognize = (Control)typeof(TiezhuToolbox.MainForm).GetField("btnCaptureRecognize",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
-            if (!btnRefresh.Visible || btnCaptureRecognize.Visible)
+            var btnConnectionStep = (Control)typeof(TiezhuToolbox.MainForm).GetField("btnConnectionStep",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;
+            if (!btnConnectionStep.Visible || btnCaptureRecognize.Visible)
                 throw new InvalidOperationException("非装备页应显示连接区并隐藏截图识别按钮");
             var autoStart = (Control)typeof(TiezhuToolbox.MainForm).GetField("_btnAutoStart",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(form)!;

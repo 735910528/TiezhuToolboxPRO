@@ -42,11 +42,9 @@ public partial class MainForm
         _equipmentTab = new AntdUI.TabPage { Text = "装备强化", BackColor = Color.White };
         _autoEnhanceTab = new AntdUI.TabPage { Text = "自动强化", BackColor = Color.FromArgb(245, 246, 248) };
         _starForgeTab = new AntdUI.TabPage { Text = "星之铁匠铺", BackColor = Color.FromArgb(245, 246, 248) };
-        var demandTab = new AntdUI.TabPage { Text = "需求分析", BackColor = Color.White };
+        _demandTab = new AntdUI.TabPage { Text = "需求分析", BackColor = Color.White };
         _settingsTab = new AntdUI.TabPage { Text = "软件设置", BackColor = Color.FromArgb(245, 246, 248) };
 
-        _equipmentTab.Controls.Add(mainTable);
-        _equipmentTab.Controls.Add(pnlScreenshot);
         foreach (var control in new Control[]
                  {
                      comboConnectionMode, comboDevices, txtAddress, btnConnect,
@@ -85,16 +83,16 @@ public partial class MainForm
         _demandBrowserControl = new DemandBrowserControl(
             profileKey => !_disabledDemandProfiles.Contains(profileKey),
             SetDemandProfileEnabled);
-        demandTab.Controls.Add(_demandBrowserControl);
+        _demandTab.Controls.Add(_demandBrowserControl);
         _demandBrowserControl.ApplyInitialDpiScale(_layoutDpi);
 
-        var autoEnhanceContent = CreateAutoEnhanceContent();
-        _autoEnhanceTab.Controls.Add(autoEnhanceContent);
-        ScaleRuntimePage(autoEnhanceContent);
+        _autoEnhanceContent = CreateAutoEnhanceContent();
+        _autoEnhanceTab.Controls.Add(_autoEnhanceContent);
+        ScaleRuntimePage(_autoEnhanceContent);
 
-        var starForgeContent = CreateStarForgeContent();
-        _starForgeTab.Controls.Add(starForgeContent);
-        ScaleRuntimePage(starForgeContent);
+        _starForgeContent = CreateStarForgeContent();
+        _starForgeTab.Controls.Add(_starForgeContent);
+        ScaleRuntimePage(_starForgeContent);
 
         var settingsContent = CreateSettingsContent();
         _settingsTab.Controls.Add(settingsContent);
@@ -103,23 +101,19 @@ public partial class MainForm
         _mainTabs.Pages.Add(_equipmentTab);
         _mainTabs.Pages.Add(_autoEnhanceTab);
         _mainTabs.Pages.Add(_starForgeTab);
-        _mainTabs.Pages.Add(demandTab);
+        _mainTabs.Pages.Add(_demandTab);
         _mainTabs.Pages.Add(_settingsTab);
         _mainTabs.SelectedIndex = 0;
         _mainTabs.SelectedIndexChanged += MainTabs_SelectedIndexChanged;
 
-        // 连接工具栏固定在窗体顶部，所有页签共享，不再嵌在「装备强化」页内。
-        topPanel.Dock = DockStyle.Top;
-        Controls.Add(_mainTabs);
-        Controls.Add(topPanel);
-        Controls.SetChildIndex(_mainTabs, 0);
-        Controls.SetChildIndex(topPanel, 1);
-        Controls.SetChildIndex(statusStrip, 2);
+        CreateHybridShell();
+        _equipmentTab.Controls.Add(_equipmentHost);
 
         LoadSettingsIntoControls();
         txtAddress.Leave += (_, _) => SaveSettingsFromControls();
         ResumeLayout(performLayout: true);
         LayoutTopToolbar();
+        ApplyHybridPageLayout();
     }
 
     private void LayoutTopToolbar()
@@ -179,6 +173,10 @@ public partial class MainForm
             var devicesLeft = btnConnectionStep.Right + gap;
             comboDevices.Location = new Point(devicesLeft, ScalePixel(15));
             comboDevices.Size = new Size(Math.Max(ScalePixel(120), right - devicesLeft), ScalePixel(34));
+        }
+        else
+        {
+            txtAddress.Size = new Size(ScalePixel(180), ScalePixel(34));
         }
     }
 
@@ -270,14 +268,7 @@ public partial class MainForm
             Dock = DockStyle.Fill,
             Font = new Font("Microsoft YaHei UI", 9.2F),
             ForeColor = Color.FromArgb(66, 70, 77),
-            Text = "• 红装赌速度：各档最低速度可在自动强化设置中自定义，默认 3/3/6/9/12，终局 15。\r\n"
-                   + "• 紫装只赌速度：鞋子除外；开启后忽略分数与匹配度，按严格速度阶梯处理。\r\n"
-                   + "• 速度套速度规则：鞋子必须为速度主属性，其他部位必须含速度副属性。\r\n"
-                   + "• 暴击项链规则：暴击率或暴伤达到高权重时，项链只接受对应的主属性。\r\n"
-                   + "• 套装子类：只匹配当前套装下的内置属性组合，不使用旧角色算法回退。\r\n"
-                   + "• 右三主属性：85级按90级满值预估，88/90使用同一满值档参与用途匹配。\r\n"
-                   + "• 强化分数：始终只统计副属性；主属性不会加入分数阶梯或重铸分数。\r\n"
-                   + "• 固定主属性：右三固定攻击、生命、防御不匹配任何需求子类。",
+            Text = string.Join("\r\n", SettingsRuleLines.Select(line => "• " + line)),
         };
         rulesPanel.Controls.Add(_settingsRulesLabel);
 
@@ -410,6 +401,8 @@ public partial class MainForm
         {
             _isLoadingSettings = false;
         }
+
+        PushWebSettings();
     }
 
     private void SaveSettingsFromControls()
@@ -509,6 +502,8 @@ public partial class MainForm
         SaveSettingsFromControls();
         ApplyRecognitionAvailability(showHotKeySuccess: false);
         UpdateAdvice();
+        PushWebDemand();
+        PushWebEquipment();
         UpdateStatus("软件设置已恢复默认");
     }
 
@@ -525,10 +520,14 @@ public partial class MainForm
             ShowDemandRecommendations(_lastInfo);
             UpdateAdvice();
         }
+
+        PushWebProfileEnabled(profileKey, enabled);
+        PushWebEquipment();
     }
 
     private void MainTabs_SelectedIndexChanged(object sender, AntdUI.IntEventArgs e)
     {
+        ApplyHybridPageLayout();
         LayoutTopToolbar();
         ApplyRecognitionAvailability(showHotKeySuccess: false);
         if (IsEquipmentTabActive && _lastInfo != null)

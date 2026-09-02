@@ -80,10 +80,10 @@ public partial class MainForm
         };
         _btnAutoOpenSettings = new AntdUI.Button
         {
-            Text = "设置",
+            Text = "强化设置",
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
             Location = new Point(520, 11),
-            Size = new Size(72, 34),
+            Size = new Size(88, 34),
             Radius = 6,
             BorderWidth = 1,
             DefaultBack = Color.White,
@@ -92,10 +92,10 @@ public partial class MainForm
         _btnAutoOpenSettings.Click += (_, _) => ShowAutoEnhanceSettingsWindow();
         _btnAutoOrganize = new AntdUI.Button
         {
-            Text = "整理",
+            Text = "开始整理",
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
             Location = new Point(600, 11),
-            Size = new Size(72, 34),
+            Size = new Size(88, 34),
             Radius = 6,
             BorderWidth = 1,
             DefaultBack = Color.White,
@@ -146,8 +146,8 @@ public partial class MainForm
         {
             _btnAutoStop.Left = controlCard.ClientSize.Width - ScalePixel(84);
             _btnAutoStart.Left = _btnAutoStop.Left - ScalePixel(104);
-            _btnAutoOrganize.Left = _btnAutoStart.Left - ScalePixel(80);
-            _btnAutoOpenSettings.Left = _btnAutoOrganize.Left - ScalePixel(80);
+            _btnAutoOrganize.Left = _btnAutoStart.Left - ScalePixel(96);
+            _btnAutoOpenSettings.Left = _btnAutoOrganize.Left - ScalePixel(96);
             _lblAutoDevice.Width = Math.Max(
                 ScalePixel(120),
                 _btnAutoOpenSettings.Left - _lblAutoDevice.Left - ScalePixel(12));
@@ -284,7 +284,7 @@ public partial class MainForm
             ColumnHeadersHeight = 30,
             RowTemplate = { Height = 28 },
             Font = new Font("Microsoft YaHei UI", 9F),
-            Margin = new Padding(0, 0, 8, 0),
+            Margin = Padding.Empty,
         };
         _autoResultGrid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(241, 243, 244);
         _autoResultGrid.ColumnHeadersDefaultCellStyle.ForeColor = TextDarkColor;
@@ -303,6 +303,15 @@ public partial class MainForm
             new DataGridViewTextBoxColumn { Name = "Outcome", HeaderText = "结果", FillWeight = 70 },
             new DataGridViewTextBoxColumn { Name = "Detail", HeaderText = "备注", FillWeight = 140 });
         _autoResultGrid.SelectionChanged += (_, _) => UpdateAutoResultScreenshotPreview();
+
+        var gridHost = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 0, 8, 0),
+            Padding = Padding.Empty,
+        };
+        _autoResultGrid.Dock = DockStyle.Fill;
+        gridHost.Controls.Add(_autoResultGrid);
 
         var previewPanel = new Panel
         {
@@ -342,7 +351,7 @@ public partial class MainForm
         previewPanel.Controls.Add(_lblAutoPreviewHint);
         previewPanel.Controls.Add(previewTitle);
 
-        body.Controls.Add(_autoResultGrid, 0, 0);
+        body.Controls.Add(gridHost, 0, 0);
         body.Controls.Add(previewPanel, 1, 0);
         resultCard.Controls.Add(body);
         resultCard.Controls.Add(resultHeader);

@@ -92,6 +92,12 @@ partial class MainForm
                 _autoScreenshotZoomForm = null;
             }
 
+            if (_webView != null && !_webView.IsDisposed)
+            {
+                _webView.Dispose();
+                _webView = null;
+            }
+
             _ocrEngine?.Dispose();
             _applicationIcon?.Dispose();
             if (_autoLogForm != null && !_autoLogForm.IsDisposed)

@@ -45,6 +45,8 @@ public partial class MainForm : Form
     {
         InitializeComponent();
         _layoutDpi = Math.Max(96, DeviceDpi);
+        _webUiSkipped = !string.IsNullOrWhiteSpace(
+            Environment.GetEnvironmentVariable("TIEZHU_TOOLBOX_USER_ROOT"));
         using var iconStream = typeof(MainForm).Assembly.GetManifestResourceStream("TiezhuToolbox.AppIcon.ico");
         if (iconStream is not null)
         {
@@ -61,6 +63,10 @@ public partial class MainForm : Form
     {
         RefreshTargetList();
         ApplyRecognitionAvailability(showHotKeySuccess: false);
+        if (_webUiSkipped)
+            return;
+
+        _ = InitializeWebUiAsync();
     }
 
     private bool IsWindowConnectionMode
@@ -615,8 +621,9 @@ public partial class MainForm : Form
     /// <summary>展开/收起底部截图预览面板。</summary>
     private void btnToggleScreenshot_Click(object sender, EventArgs e)
     {
-        pnlScreenshot.Visible = !pnlScreenshot.Visible;
-        btnToggleShot.Text = pnlScreenshot.Visible ? "收起截图" : "查看截图";
+        _screenshotWanted = !_screenshotWanted;
+        btnToggleShot.Text = _screenshotWanted ? "收起截图" : "查看截图";
+        pnlScreenshot.Visible = IsEquipmentTabActive && _screenshotWanted;
     }
 
     private void ShowEquipmentInfo(Modules.Ocr.EquipmentInfo info)
@@ -645,6 +652,7 @@ public partial class MainForm : Form
 
         UpdateAdvice();
         ShowDemandRecommendations(info);
+        PushWebEquipment();
     }
 
     /// <summary>比较会影响界面展示与推荐结果的装备字段，忽略每轮都可能不同的 OCR 调试文本。</summary>
@@ -720,6 +728,7 @@ public partial class MainForm : Form
             _ => AdviceNoneColor,
         };
         lblAdviceDetail.Text = result.Detail;
+        PushWebEquipment();
     }
 
     private Modules.Recommend.LegendarySpeedLadder ReadLegendarySpeedLadderFromControls()
@@ -1021,6 +1030,12 @@ public partial class MainForm : Form
         base.OnDpiChanged(e);
         _demandBrowserControl?.CompleteDpiChange();
         LayoutTopToolbar();
+        if (_tabBar != null)
+        {
+            _tabBar.Height = ScalePixel(44);
+            RefreshTabBar();
+        }
+        ApplyHybridPageLayout();
     }
 
     /// <summary>读文件加载图片且不占用文件句柄（避免锁住 Assets 下的头像）。</summary>
